@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 clap = "4.3.23"
+crc = "3.0.1"

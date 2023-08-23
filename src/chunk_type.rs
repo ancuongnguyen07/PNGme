@@ -1,7 +1,6 @@
-
 use crate::Error;
-use std::{io::ErrorKind, str::FromStr, fmt::Display};
 use core::slice::Iter;
+use std::{fmt::Display, io::ErrorKind, str::FromStr};
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct ChunkType {
@@ -15,10 +14,10 @@ impl ChunkType {
 
     pub fn is_valid(&self) -> bool {
         self.is_reserved_bit_valid()
-        && match are_valid_chars(&self.bytes.iter()) {
-            Ok(_) => true,
-            Err(_) => false,
-        }
+            && match are_valid_chars(&self.bytes.iter()) {
+                Ok(_) => true,
+                Err(_) => false,
+            }
     }
 
     pub fn is_critical(&self) -> bool {
@@ -43,10 +42,12 @@ impl FromStr for ChunkType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.len() != 4 {
-            return Err(Box::new(std::io::Error::new(ErrorKind::InvalidInput,
-                    "invalid length of input bytes, must be 4 bytes")));
+            return Err(Box::new(std::io::Error::new(
+                ErrorKind::InvalidInput,
+                "invalid length of input bytes, must be 4 bytes",
+            )));
         }
-        
+
         are_valid_chars(&s.as_bytes().iter())?;
         let mut bytes_array: [u8; 4] = [0; 4];
         bytes_array.copy_from_slice(s.as_bytes());
@@ -63,6 +64,17 @@ impl TryFrom<[u8; 4]> for ChunkType {
     }
 }
 
+impl TryFrom<&[u8]> for ChunkType {
+    type Error = Error;
+
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+        are_valid_chars(&value.iter())?;
+        let mut bytes: [u8; 4] = [0; 4];
+        bytes.copy_from_slice(value);
+        Ok(Self { bytes })
+    }
+}
+
 impl Display for ChunkType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = std::str::from_utf8(self.bytes.as_ref()).unwrap();
@@ -73,9 +85,10 @@ impl Display for ChunkType {
 fn are_valid_chars(iterator: &Iter<'_, u8>) -> Result<(), Error> {
     let mut temp_iter = iterator.clone();
     if temp_iter.any(|&byte| !byte.is_ascii_alphabetic()) {
-        
-        return Err(Box::new(std::io::Error::new(ErrorKind::InvalidData,
-            "invalid byte value, only [a-zA-Z]")));
+        return Err(Box::new(std::io::Error::new(
+            ErrorKind::InvalidData,
+            "invalid byte value, only [a-zA-Z]",
+        )));
     }
 
     Ok(())
