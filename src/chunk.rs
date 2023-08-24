@@ -1,17 +1,18 @@
-use crate::{chunk_type, Error, Result};
+use crate::displayable_vec::DisplayableVec;
+use crate::{Error, Result};
+use std::io::{BufReader, Bytes, Read};
 use std::{fmt::Display, io::ErrorKind};
 
 use crate::chunk_type::ChunkType;
 use crc::{Crc, CRC_32_ISO_HDLC};
 
+#[derive(Clone)]
 pub struct Chunk {
     length: u32,
     chunk_type: ChunkType,
     chunk_data: DisplayableVec,
     crc: u32,
 }
-
-pub struct DisplayableVec(Vec<u8>);
 
 impl Chunk {
     pub fn new(chunk_type: ChunkType, data: Vec<u8>) -> Chunk {
@@ -30,27 +31,39 @@ impl Chunk {
         }
     }
 
+    /// The length of the data portion of this chunk.
     pub fn length(&self) -> u32 {
         self.length
     }
 
+    /// The `ChunkType` of this chunk
     pub fn chunk_type(&self) -> &ChunkType {
         &self.chunk_type
     }
 
+    /// The raw data contained in this chunk in bytes
     pub fn data(&self) -> &[u8] {
         &self.chunk_data.0
     }
 
+    /// The CRC of this chunk
     pub fn crc(&self) -> u32 {
         self.crc
     }
 
+    /// Returns the data stored in this chunk as a `String`. This function will return an error
+    /// if the stored data is not valid UTF-8.
     pub fn data_as_string(&self) -> Result<String> {
         let s = String::from_utf8(self.chunk_data.0.clone())?;
         Ok(s)
     }
 
+    /// Returns this chunk as a byte sequences described by the PNG spec.
+    /// The following data is included in this byte sequence in order:
+    /// 1. Length of the data *(4 bytes)*
+    /// 2. Chunk type *(4 bytes)*
+    /// 3. The data itself *(`length` bytes)*
+    /// 4. The CRC of the chunk type and data *(4 bytes)*
     pub fn as_bytes(&self) -> Vec<u8> {
         self.length
             .to_be_bytes()
@@ -63,6 +76,7 @@ impl Chunk {
     }
 }
 
+/// Compute CRC from Chunk Type and Chunk Data
 fn compute_crc(chunk_type: &[u8], chunk_data: &[u8]) -> u32 {
     let crc = Crc::<u32>::new(&CRC_32_ISO_HDLC);
     let bytes_vec: Vec<u8> = chunk_type
@@ -89,10 +103,11 @@ impl TryFrom<&[u8]> for Chunk {
         // the second 4 bytes for the chunk type
         // the following for chunk data
         // the last 4 bytes for CRC
-        let length_byte = value.get(..4).expect("invalid length byte");
-        let mut length_slice: [u8; 4] = [0; 4];
-        length_slice.copy_from_slice(length_byte);
-        let length = u32::from_be_bytes(length_slice);
+        let mut reader = BufReader::new(value);
+
+        let mut length_bytes: [u8; 4] = [0; 4];
+        reader.read_exact(&mut length_bytes)?;
+        let length = u32::from_be_bytes(length_bytes);
 
         let chunk_type_slice = value.get(4..8).expect("invalid length byte");
         let chunk_type = ChunkType::try_from(chunk_type_slice)?;
@@ -121,18 +136,6 @@ impl TryFrom<&[u8]> for Chunk {
             chunk_data,
             crc,
         })
-    }
-}
-
-impl Display for DisplayableVec {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for bytes in self.0.chunks(4) {
-            let s: Vec<String> = bytes.iter().map(|&b| b.to_string()).collect();
-            let s = s.join(" ");
-
-            writeln!(f, "{}", s)?;
-        }
-        Ok(())
     }
 }
 

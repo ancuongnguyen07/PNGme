@@ -2,16 +2,19 @@ use crate::Error;
 use core::slice::Iter;
 use std::{fmt::Display, io::ErrorKind, str::FromStr};
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub struct ChunkType {
     bytes: [u8; 4],
 }
 
 impl ChunkType {
+    /// Returns the raw bytes contained in this chunk
     pub fn bytes(&self) -> [u8; 4] {
         self.bytes
     }
 
+    /// Returns true if the reserved byte is valid and all four bytes are represented by the characters A-Z or a-z.
+    /// Note that this chunk type should always be valid as it is validated during construction.
     pub fn is_valid(&self) -> bool {
         self.is_reserved_bit_valid()
             && match are_valid_chars(&self.bytes.iter()) {
@@ -20,18 +23,22 @@ impl ChunkType {
             }
     }
 
+    /// Returns the property state of the first byte as described in the PNG spec
     pub fn is_critical(&self) -> bool {
         self.bytes[0].is_ascii_uppercase()
     }
 
+    /// Returns the property state of the second byte as described in the PNG spec
     pub fn is_public(&self) -> bool {
         self.bytes[1].is_ascii_uppercase()
     }
 
+    /// Returns the property state of the third byte as described in the PNG spec
     pub fn is_reserved_bit_valid(&self) -> bool {
         self.bytes[2].is_ascii_uppercase()
     }
 
+    /// Returns the property state of the fourth byte as described in the PNG spec
     pub fn is_safe_to_copy(&self) -> bool {
         self.bytes[3].is_ascii_lowercase()
     }
@@ -82,6 +89,7 @@ impl Display for ChunkType {
     }
 }
 
+/// Valid bytes are represented by the characters A-Z or a-z
 fn are_valid_chars(iterator: &Iter<'_, u8>) -> Result<(), Error> {
     let mut temp_iter = iterator.clone();
     if temp_iter.any(|&byte| !byte.is_ascii_alphabetic()) {
