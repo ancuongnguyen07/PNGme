@@ -18,8 +18,7 @@ impl Chunk {
     pub fn new(chunk_type: ChunkType, data: Vec<u8>) -> Chunk {
         let length = data.len() as u32;
 
-        let chunk_data: Vec<u8> = data.to_vec();
-        let chunk_data: DisplayableVec = DisplayableVec(chunk_data);
+        let chunk_data: DisplayableVec = DisplayableVec(data);
 
         let crc = compute_crc(&chunk_type.bytes(), &chunk_data.0);
 
@@ -60,10 +59,10 @@ impl Chunk {
 
     /// Returns this chunk as a byte sequences described by the PNG spec.
     /// The following data is included in this byte sequence in order:
-    /// 1. Length of the data *(4 bytes)*
-    /// 2. Chunk type *(4 bytes)*
-    /// 3. The data itself *(`length` bytes)*
-    /// 4. The CRC of the chunk type and data *(4 bytes)*
+    /// 1. Length of the data **(4 bytes)**
+    /// 2. Chunk type **(4 bytes)**
+    /// 3. The data itself **(`length` bytes)**
+    /// 4. The CRC of the chunk type and data **(4 bytes)**
     pub fn as_bytes(&self) -> Vec<u8> {
         self.length
             .to_be_bytes()

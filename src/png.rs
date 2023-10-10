@@ -1,6 +1,12 @@
-use std::{fmt::Display, io::ErrorKind};
+use std::{fmt::Display, io::ErrorKind, path::Path};
 
 use crate::{chunk::Chunk, displayable_vec::DisplayableVec, Error, Result};
+
+use std::fs::{File, OpenOptions};
+use std::io::{self, Read, Write};
+
+// Fill in this array with the correct values per the PNG spec
+const STANDARD_HEADER: [u8; 8] = [137, 80, 78, 71, 13, 10, 26, 10];
 
 pub struct Png {
     header: [u8; 8],
@@ -8,15 +14,31 @@ pub struct Png {
 }
 
 impl Png {
-    // Fill in this array with the correct values per the PNG spec
-    const STANDARD_HEADER: [u8; 8] = [137, 80, 78, 71, 13, 10, 26, 10];
-
     /// Creates a `Png` from a list of chunks using the correct header
     pub fn from_chunks(chunks: Vec<Chunk>) -> Png {
         Self {
-            header: Self::STANDARD_HEADER,
+            header: STANDARD_HEADER,
             chunks: chunks,
         }
+    }
+
+    /// Creates a 'Png' from a file using the correct header
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let mut png_file = File::open(path)?;
+
+        // Read the file into vector
+        let mut buffer = Vec::new();
+        png_file.read_to_end(&mut buffer)?;
+
+        // Return this struct if input data is valid
+        Png::try_from(buffer.as_slice())
+    }
+
+    /// Export this PNG struct to a PNG file with given file path
+    pub fn to_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+        let mut png_file = OpenOptions::new().write(true).create(true).open(path)?;
+        png_file.write_all(&self.as_bytes())?;
+        Ok(())
     }
 
     /// Appends a chunk to the end of this `Png` file's `Chunk` list.
@@ -77,7 +99,7 @@ impl TryFrom<&[u8]> for Png {
 
     fn try_from(value: &[u8]) -> std::result::Result<Self, Self::Error> {
         let first_8_bytes = value.get(..8).expect("Byte stream less than 8 bytes");
-        if first_8_bytes != Self::STANDARD_HEADER {
+        if first_8_bytes != STANDARD_HEADER {
             return Err(Box::new(std::io::Error::new(
                 ErrorKind::InvalidInput,
                 "Invalid header bytes",
@@ -154,7 +176,7 @@ mod tests {
             .flat_map(|chunk| chunk.as_bytes())
             .collect();
 
-        let bytes: Vec<u8> = Png::STANDARD_HEADER
+        let bytes: Vec<u8> = STANDARD_HEADER
             .iter()
             .chain(chunk_bytes.iter())
             .copied()
@@ -259,7 +281,7 @@ mod tests {
             .flat_map(|chunk| chunk.as_bytes())
             .collect();
 
-        let bytes: Vec<u8> = Png::STANDARD_HEADER
+        let bytes: Vec<u8> = STANDARD_HEADER
             .iter()
             .chain(chunk_bytes.iter())
             .copied()

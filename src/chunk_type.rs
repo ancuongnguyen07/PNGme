@@ -51,7 +51,7 @@ impl FromStr for ChunkType {
         if s.len() != 4 {
             return Err(Box::new(std::io::Error::new(
                 ErrorKind::InvalidInput,
-                "invalid length of input bytes, must be 4 bytes",
+                "Chunk Type: invalid length of input bytes, must be 4 bytes",
             )));
         }
 
