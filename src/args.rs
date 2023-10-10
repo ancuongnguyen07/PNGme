@@ -28,7 +28,7 @@ pub struct EncodeArgs {
     #[arg(short, long)]
     pub in_file_path: PathBuf,
 
-    /// Chunk type
+    /// Chunk type: 4 bytes
     #[arg(short, long)]
     pub chunk_type: String,
 
@@ -45,9 +45,9 @@ pub struct EncodeArgs {
 pub struct DecodeArgs {
     /// Path to the PNG file
     #[arg(short, long)]
-    pub file_path: PathBuf,
+    pub in_file_path: PathBuf,
 
-    /// Chunk type
+    /// Chunk type: 4 bytes
     #[arg(short, long)]
     pub chunk_type: String,
 }
@@ -56,9 +56,9 @@ pub struct DecodeArgs {
 pub struct RemoveArgs {
     /// Path to the input PNG file
     #[arg(short, long)]
-    pub file_path: PathBuf,
+    pub in_file_path: PathBuf,
 
-    /// Chunk type
+    /// Chunk type: 4 bytes
     #[arg(short, long)]
     pub chunk_type: String,
 }
@@ -67,5 +67,5 @@ pub struct RemoveArgs {
 pub struct PrintArgs {
     /// Path to the input PNG file
     #[arg(short, long)]
-    pub file_path: PathBuf,
+    pub in_file_path: PathBuf,
 }
