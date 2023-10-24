@@ -28,7 +28,7 @@ This lightweight command-line tool provides a fun and creative way to share hidd
 1. Clone the repository:
 
 ```bash
-git clone https://github
+git clone https://github.com/ancuongnguyen07/PNGme
 ```
 
 2. Change to the project directory:
