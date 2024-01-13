@@ -1,9 +1,9 @@
-use std::{fmt::Display, io::ErrorKind, path::Path};
+use std::{fmt::Display, path::Path};
 
 use crate::{chunk::Chunk, displayable_vec::DisplayableVec, Error, Result};
 
 use std::fs::{File, OpenOptions};
-use std::io::{self, Read, Write};
+use std::io::{Read, Write};
 
 // Fill in this array with the correct values per the PNG spec
 const STANDARD_HEADER: [u8; 8] = [137, 80, 78, 71, 13, 10, 26, 10];
@@ -24,11 +24,13 @@ impl Png {
 
     /// Creates a 'Png' from a file using the correct header
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let mut png_file = File::open(path)?;
+        let mut png_file = File::open(path).map_err(|e| Error::FileOpenErr(e))?;
 
         // Read the file into vector
         let mut buffer = Vec::new();
-        png_file.read_to_end(&mut buffer)?;
+        png_file
+            .read_to_end(&mut buffer)
+            .map_err(|e| Error::BufferReaderErr(e))?;
 
         // Return this struct if input data is valid
         Png::try_from(buffer.as_slice())
@@ -36,8 +38,14 @@ impl Png {
 
     /// Export this PNG struct to a PNG file with given file path
     pub fn to_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let mut png_file = OpenOptions::new().write(true).create(true).open(path)?;
-        png_file.write_all(&self.as_bytes())?;
+        let mut png_file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(path)
+            .map_err(|e| Error::FileOpenErr(e))?;
+        png_file
+            .write_all(&self.as_bytes())
+            .map_err(|e| Error::BufferWriterErr(e))?;
         Ok(())
     }
 
@@ -57,10 +65,7 @@ impl Png {
             let removed_chunk = self.chunks.remove(index);
             Ok(removed_chunk)
         } else {
-            Err(Box::new(std::io::Error::new(
-                ErrorKind::InvalidInput,
-                "Chunk Type not found",
-            )))
+            Err(Error::NotFoundChunkType)
         }
     }
 
@@ -100,10 +105,7 @@ impl TryFrom<&[u8]> for Png {
     fn try_from(value: &[u8]) -> std::result::Result<Self, Self::Error> {
         let first_8_bytes = value.get(..8).expect("Byte stream less than 8 bytes");
         if first_8_bytes != STANDARD_HEADER {
-            return Err(Box::new(std::io::Error::new(
-                ErrorKind::InvalidInput,
-                "Invalid header bytes",
-            )));
+            return Err(Error::InvalidHeaderByte);
         }
         let mut header: [u8; 8] = [0; 8];
         header.copy_from_slice(first_8_bytes);

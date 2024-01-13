@@ -1,7 +1,7 @@
 use crate::displayable_vec::DisplayableVec;
 use crate::{Error, Result};
-use std::io::{BufReader, Bytes, Read};
-use std::{fmt::Display, io::ErrorKind};
+use std::fmt::Display;
+use std::io::{BufReader, Read};
 
 use crate::chunk_type::ChunkType;
 use crc::{Crc, CRC_32_ISO_HDLC};
@@ -53,7 +53,8 @@ impl Chunk {
     /// Returns the data stored in this chunk as a `String`. This function will return an error
     /// if the stored data is not valid UTF-8.
     pub fn data_as_string(&self) -> Result<String> {
-        let s = String::from_utf8(self.chunk_data.0.clone())?;
+        let s =
+            String::from_utf8(self.chunk_data.0.clone()).map_err(|_| Error::StringConversion)?;
         Ok(s)
     }
 
@@ -92,10 +93,7 @@ impl TryFrom<&[u8]> for Chunk {
     fn try_from(value: &[u8]) -> std::result::Result<Self, Self::Error> {
         let data: Vec<u8> = value.to_vec();
         if data.len() < 4 {
-            return Err(Box::new(std::io::Error::new(
-                ErrorKind::InvalidInput,
-                "invalid length of chunk, must greater 4 bytes",
-            )));
+            return Err(Error::InvalidLength);
         }
 
         // first 4 bytes for the length
@@ -105,7 +103,9 @@ impl TryFrom<&[u8]> for Chunk {
         let mut reader = BufReader::new(value);
 
         let mut length_bytes: [u8; 4] = [0; 4];
-        reader.read_exact(&mut length_bytes)?;
+        reader
+            .read_exact(&mut length_bytes)
+            .map_err(|e| Error::BufferReaderErr(e))?;
         let length = u32::from_be_bytes(length_bytes);
 
         let chunk_type_slice = value.get(4..8).expect("invalid length byte");
@@ -123,10 +123,7 @@ impl TryFrom<&[u8]> for Chunk {
         let crc: u32 = u32::from_be_bytes(crc_byte);
 
         if crc != compute_crc(chunk_type_slice, chunk_data_slice) {
-            return Err(Box::new(std::io::Error::new(
-                ErrorKind::InvalidInput,
-                "Invalid CRC",
-            )));
+            return Err(Error::InvalidCRC);
         }
 
         Ok(Self {

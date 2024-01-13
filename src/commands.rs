@@ -1,4 +1,4 @@
-use std::io::ErrorKind;
+use crate::error::Error;
 use std::path::Path;
 use std::str::FromStr;
 
@@ -30,10 +30,7 @@ pub fn decode(args: DecodeArgs) -> Result<()> {
         println!("The secret message: {mess}");
         Ok(())
     } else {
-        Err(Box::new(std::io::Error::new(
-            ErrorKind::InvalidInput,
-            "Cannot find the secret message",
-        )))
+        Err(Error::NotFoundSecMess)
     }
 }
 

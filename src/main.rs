@@ -3,13 +3,14 @@ mod chunk;
 mod chunk_type;
 mod commands;
 mod displayable_vec;
+mod error;
 mod png;
 
+use crate::error::Error;
 use args::{App, Command};
 use clap::Parser;
 use commands::*;
 
-pub type Error = Box<dyn std::error::Error>;
 pub type Result<T> = std::result::Result<T, Error>;
 
 fn main() -> Result<()> {

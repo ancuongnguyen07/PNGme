@@ -1,7 +1,8 @@
 use crate::Error;
 use core::slice::Iter;
-use std::{fmt::Display, io::ErrorKind, str::FromStr};
+use std::{fmt::Display, str::FromStr};
 
+/// The 4 bytes string representing the type of the following chunk
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub struct ChunkType {
     bytes: [u8; 4],
@@ -47,12 +48,9 @@ impl ChunkType {
 impl FromStr for ChunkType {
     type Err = Error;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self, Error> {
         if s.len() != 4 {
-            return Err(Box::new(std::io::Error::new(
-                ErrorKind::InvalidInput,
-                "Chunk Type: invalid length of input bytes, must be 4 bytes",
-            )));
+            return Err(Error::InvalidLength);
         }
 
         are_valid_chars(&s.as_bytes().iter())?;
@@ -93,10 +91,7 @@ impl Display for ChunkType {
 fn are_valid_chars(iterator: &Iter<'_, u8>) -> Result<(), Error> {
     let mut temp_iter = iterator.clone();
     if temp_iter.any(|&byte| !byte.is_ascii_alphabetic()) {
-        return Err(Box::new(std::io::Error::new(
-            ErrorKind::InvalidData,
-            "invalid byte value, only [a-zA-Z]",
-        )));
+        return Err(Error::InvalidByteValue);
     }
 
     Ok(())
