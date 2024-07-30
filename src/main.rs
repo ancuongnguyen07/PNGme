@@ -1,15 +1,11 @@
-mod args;
-mod chunk;
-mod chunk_type;
-mod commands;
-mod displayable_vec;
+mod cmd;
 mod error;
 mod png;
 
+use crate::cmd::args::{App, Command};
+use crate::cmd::commands::*;
 use crate::error::Error;
-use args::{App, Command};
 use clap::Parser;
-use commands::*;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
