@@ -51,7 +51,7 @@ impl FromStr for ChunkType {
     fn from_str(s: &str) -> Result<Self, Error> {
         if s.len() != 4 {
             return Err(Error::InvalidLength(
-                "The chunk type is less than 4 bytes".to_string(),
+                "The chunk type must be exactly 4-byte long".to_string(),
             ));
         }
 

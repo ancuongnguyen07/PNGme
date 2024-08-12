@@ -1,4 +1,5 @@
 mod cmd;
+mod crypto;
 mod error;
 mod png;
 

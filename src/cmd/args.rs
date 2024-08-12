@@ -40,36 +40,52 @@ pub struct EncodeArgs {
     #[arg(short, long, required = true)]
     pub out_file_path: PathBuf,
 
+    /// Verbosity
+    #[arg(short, long)]
+    pub verbosity: bool,
+
     /// URL to a PNG image
     #[arg(short, long)]
     pub url: Option<String>,
+
+    /// The base64-encoded private key for encryption
+    #[arg(short, long)]
+    pub key: Option<String>,
 }
 
 #[derive(Args, Debug)]
 pub struct DecodeArgs {
     /// Path to the PNG file
-    #[arg(short, long)]
+    #[arg(short, long, required = true)]
     pub in_file_path: PathBuf,
 
     /// Chunk type: 4 bytes
-    #[arg(short, long)]
+    #[arg(short, long, required = true)]
     pub chunk_type: String,
+
+    /// The base64-encoded private key for decryption
+    #[arg(short, long)]
+    pub key: Option<String>,
+
+    /// The Nonce used for decryption
+    #[arg(short, long)]
+    pub nonce: Option<String>,
 }
 
 #[derive(Args, Debug)]
 pub struct RemoveArgs {
     /// Path to the input PNG file
-    #[arg(short, long)]
+    #[arg(short, long, required = true)]
     pub in_file_path: PathBuf,
 
     /// Chunk type: 4 bytes
-    #[arg(short, long)]
+    #[arg(short, long, required = true)]
     pub chunk_type: String,
 }
 
 #[derive(Args, Debug)]
 pub struct PrintArgs {
     /// Path to the input PNG file
-    #[arg(short, long)]
+    #[arg(short, long, required = true)]
     pub in_file_path: PathBuf,
 }

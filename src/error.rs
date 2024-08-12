@@ -19,6 +19,9 @@ pub enum Error {
     #[error("Invalid CRC")]
     InvalidCRC,
 
+    #[error("The Chunk Type is already existed")]
+    DuplicatedChunkType,
+
     #[error("Could not read from buffer")]
     BufferReaderErr(#[source] io::Error),
 
@@ -45,4 +48,19 @@ pub enum Error {
 
     #[error("The URL should link to a PNG file")]
     InvalidPNGURL(String),
+
+    #[error("Invalid key length for AES256: the key should be 32-byte long")]
+    InvalidKeyLength,
+
+    #[error("Invalid key for AES256")]
+    InvalidKey,
+
+    #[error("Invalid Nonce")]
+    InvalidNonce,
+
+    #[error("Could not encrypt your data chunk")]
+    EncryptionErr,
+
+    #[error("Could not decrypt your secret message")]
+    DecryptionErr,
 }

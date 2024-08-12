@@ -15,10 +15,10 @@ pub struct Chunk {
 }
 
 impl Chunk {
-    pub fn new(chunk_type: ChunkType, data: Vec<u8>) -> Chunk {
+    pub fn new(chunk_type: ChunkType, data: &[u8]) -> Chunk {
         let length = data.len() as u32;
 
-        let chunk_data: DisplayableVec = DisplayableVec(data);
+        let chunk_data = DisplayableVec::new(data);
 
         let crc = compute_crc(&chunk_type.bytes(), &chunk_data.0);
 
@@ -53,8 +53,7 @@ impl Chunk {
     /// Returns the data stored in this chunk as a `String`. This function will return an error
     /// if the stored data is not valid UTF-8.
     pub fn data_as_string(&self) -> Result<String> {
-        let s =
-            String::from_utf8(self.chunk_data.0.clone()).map_err(|_| Error::StringConversion)?;
+        let s = String::from_utf8_lossy(&self.chunk_data.0).to_string();
         Ok(s)
     }
 
@@ -115,7 +114,7 @@ impl TryFrom<&[u8]> for Chunk {
 
         let data_crc_border: usize = (8 + length) as usize;
         let chunk_data_slice = value.get(8..data_crc_border).expect("invalid length byte");
-        let chunk_data = DisplayableVec(chunk_data_slice.to_vec());
+        let chunk_data = DisplayableVec::new(chunk_data_slice);
 
         let crc = value
             .get(data_crc_border..(data_crc_border + 4) as usize)
@@ -139,7 +138,7 @@ impl TryFrom<&[u8]> for Chunk {
 
 impl Display for Chunk {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let bytes: DisplayableVec = DisplayableVec(self.as_bytes());
+        let bytes = DisplayableVec(self.as_bytes());
         write!(f, "{}", bytes)
     }
 }
@@ -174,7 +173,7 @@ mod tests {
         let data = "This is where your secret message will be!"
             .as_bytes()
             .to_vec();
-        let chunk = Chunk::new(chunk_type, data);
+        let chunk = Chunk::new(chunk_type, &data);
         assert_eq!(chunk.length(), 42);
         assert_eq!(chunk.crc(), 2882656334);
     }

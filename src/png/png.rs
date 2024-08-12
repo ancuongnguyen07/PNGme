@@ -55,8 +55,16 @@ impl Png {
     }
 
     /// Appends a chunk to the end of this `Png` file's `Chunk` list.
-    pub fn append_chunk(&mut self, chunk: Chunk) {
+    pub fn append_chunk(&mut self, chunk: Chunk) -> Result<()> {
+        if self
+            .chunks
+            .iter()
+            .any(|chunk_iter| chunk.chunk_type() == chunk_iter.chunk_type())
+        {
+            return Err(Error::DuplicatedChunkType);
+        }
         self.chunks.push(chunk);
+        Ok(())
     }
 
     /// Searches for a `Chunk` with the specified `chunk_type` and removes the first
@@ -167,7 +175,7 @@ mod tests {
         let chunk_type = ChunkType::from_str(chunk_type)?;
         let data: Vec<u8> = data.bytes().collect();
 
-        Ok(Chunk::new(chunk_type, data))
+        Ok(Chunk::new(chunk_type, &data))
     }
 
     #[test]
@@ -255,7 +263,7 @@ mod tests {
     #[test]
     fn test_append_chunk() -> Result<()> {
         let mut png = testing_png();
-        png.append_chunk(chunk_from_strings("TeSt", "Message").unwrap());
+        png.append_chunk(chunk_from_strings("TeSt", "Message").unwrap())?;
         let chunk = png.chunk_by_type("TeSt")?.expect("Should have Some(chunk)");
         assert_eq!(&chunk.chunk_type().to_string(), "TeSt");
         assert_eq!(&chunk.data_as_string().unwrap(), "Message");
@@ -265,7 +273,7 @@ mod tests {
     #[test]
     fn test_remove_chunk() -> Result<()> {
         let mut png = testing_png();
-        png.append_chunk(chunk_from_strings("TeSt", "Message").unwrap());
+        png.append_chunk(chunk_from_strings("TeSt", "Message").unwrap())?;
         png.remove_chunk("TeSt").unwrap();
         let chunk = png.chunk_by_type("TeSt")?;
         assert!(chunk.is_none());
