@@ -158,22 +158,9 @@ pub fn print_chunks(args: PrintArgs) -> Result<()> {
     Ok(())
 }
 
-/// Checks if the given URL links to a PNG file
-/// by checking the extension part, the after-dot part.
-fn is_png_url(url: &str) -> bool {
-    return url.split('.').last().unwrap() == "png";
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_is_png_url() {
-        assert!(is_png_url("https://abc.com/xyz/123.png"));
-        assert!(!is_png_url("http://abc.com/xyz/qwe/890.jpg"));
-        assert!(!is_png_url("https://abc.com/xyz/qwe/890.jpg.pNg"))
-    }
 
     #[test]
     fn test_aes_crypto() -> Result<()> {

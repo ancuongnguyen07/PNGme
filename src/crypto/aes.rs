@@ -4,7 +4,7 @@ use aes_gcm::{aead::OsRng, AeadCore, Aes256Gcm, Key, KeyInit};
 use crate::Error;
 use crate::Result;
 
-fn aes256gcm_cipher(key_raw: &[u8]) -> Result<(Aes256Gcm)> {
+fn aes256gcm_cipher(key_raw: &[u8]) -> Result<Aes256Gcm> {
     if key_raw.len() != 32 {
         return Err(Error::InvalidKeyLength);
     }

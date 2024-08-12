@@ -44,6 +44,10 @@ pub struct EncodeArgs {
     #[arg(short, long)]
     pub verbosity: bool,
 
+    /// Exhaustively searching for all potential secret hidden message
+    #[arg(short, long)]
+    pub all: bool,
+
     /// URL to a PNG image
     #[arg(short, long)]
     pub url: Option<String>,
@@ -59,7 +63,7 @@ pub struct DecodeArgs {
     #[arg(short, long, required = true)]
     pub in_file_path: PathBuf,
 
-    /// Chunk type: 4 bytes
+    /// Chunk type: exactly 4 bytes
     #[arg(short, long, required = true)]
     pub chunk_type: String,
 
