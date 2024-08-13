@@ -55,6 +55,10 @@ pub struct EncodeArgs {
     /// The base64-encoded private key for encryption
     #[arg(short, long)]
     pub key: Option<String>,
+
+    /// Passphrase used for encryption/decryption
+    #[arg(short, long)]
+    pub passphrase: Option<String>,
 }
 
 #[derive(Args, Debug)]
@@ -71,9 +75,17 @@ pub struct DecodeArgs {
     #[arg(short, long)]
     pub key: Option<String>,
 
-    /// The Nonce used for decryption
+    /// Verbosity
     #[arg(short, long)]
-    pub nonce: Option<String>,
+    pub verbosity: bool,
+
+    /// The Nonce used for decryption
+    #[arg(short, long, required = true)]
+    pub nonce: String,
+
+    /// Passphrase used for encryption/decryption
+    #[arg(short, long)]
+    pub passphrase: Option<String>,
 }
 
 #[derive(Args, Debug)]

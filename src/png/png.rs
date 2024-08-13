@@ -45,6 +45,7 @@ impl Png {
     pub fn to_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let mut png_file = OpenOptions::new()
             .write(true)
+            .truncate(true)
             .create(true)
             .open(path)
             .map_err(|e| Error::FileOpenErr(e))?;

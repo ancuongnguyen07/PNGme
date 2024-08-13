@@ -1,0 +1,19 @@
+#!/usr/bin/expect
+if {[llength $argv] != 2} {
+    puts "Usage: run_expect_tty.exp <command> <passphrase>"
+    exit 1
+}
+
+set COMMAND [lindex $argv 0]
+set PASSPHRASE [lindex $argv 1]
+
+# Start new process dealing with the given command
+spawn script -qf -c $COMMAND /dev/null
+
+expect "Enter your passphrase: "
+send "$PASSPHRASE\r"
+
+expect eof
+
+# Print out the exact output
+# puts -nonewline $expect_out(buffer)

@@ -1,4 +1,4 @@
-use crate::crypto::aes256gcm_decrypt;
+use crate::crypto::{aes256gcm_decrypt, sha3_hash};
 use crate::error::Error;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -20,24 +20,34 @@ use base64::{engine::general_purpose::STANDARD, Engine as _};
 /// Returns base64-encoded ciphertext and Nonce.
 fn encrypt_helper(
     key_arg: &Option<String>,
+    passphrase_arg: &Option<String>,
     mess_bytes: &[u8],
-) -> Result<(Vec<u8>, Option<String>)> {
-    let mut nonce: Option<String> = None;
-    let ciphertext = if let Some(base64_enc_key) = key_arg {
-        // The chunk content needs to be encrypted
+) -> Result<(Vec<u8>, String)> {
+    if passphrase_arg.is_some() && key_arg.is_some() {
+        return Err(Error::OverlapKeyPassphrase);
+    }
+
+    let enc_key = if let Some(base64_enc_key) = key_arg {
+        // Use the given key to encrypt message (chunk content)
 
         // Base64 decoding the encryption key
-        let enc_key = STANDARD
+        STANDARD
             .decode(base64_enc_key)
-            .map_err(|_| Error::InvalidKey)?;
-        let (encrypted_mess, nonce_raw) = crypto::aes256gcm_encrypt(mess_bytes, &enc_key)?;
-        nonce = Some(STANDARD.encode(nonce_raw));
-        encrypted_mess
+            .map_err(|_| Error::InvalidKey)?
     } else {
-        // Plaintext chunk content
-        mess_bytes.to_vec()
+        // Use the key derived from the given passphrase for encryption
+        if let Some(passphrase) = passphrase_arg {
+            // Hash the given passphrase
+            sha3_hash(passphrase)?
+        } else {
+            // Promt to user for typing their passphrase invisibly
+            get_passphrase_key()?
+        }
     };
 
+    let (ciphertext, nonce_raw) = crypto::aes256gcm_encrypt(mess_bytes, &enc_key)?;
+    // base64-encode Nonce
+    let nonce = STANDARD.encode(nonce_raw);
     Ok((ciphertext, nonce))
 }
 
@@ -80,7 +90,7 @@ fn input_png_helper(file_arg: &Option<PathBuf>, url_arg: &Option<String>) -> Res
 /// Encodes a message into a PNG file and saves the result
 pub fn encode(args: EncodeArgs) -> Result<()> {
     let chunk_type = ChunkType::from_str(&args.chunk_type)?;
-    let (chunk_content, nonce) = encrypt_helper(&args.key, args.mess.as_bytes())?;
+    let (chunk_content, nonce) = encrypt_helper(&args.key, &args.passphrase, args.mess.as_bytes())?;
     let chunk = Chunk::new(chunk_type, &chunk_content);
 
     let file_path = input_png_helper(&args.in_file_path, &args.url)?;
@@ -89,12 +99,10 @@ pub fn encode(args: EncodeArgs) -> Result<()> {
 
     png.to_file(Path::new(&args.out_file_path))?;
 
-    if let Some(nonce_str) = nonce {
-        if args.verbosity {
-            println!("Please SAVE a copy of this base64-encoded Nonce so that you can use it to decrypt your message later: {nonce_str}");
-        } else {
-            println!("Nonce:{nonce_str}");
-        }
+    if args.verbosity {
+        println!("Please SAVE a copy of this base64-encoded Nonce so that you can use it to decrypt your message later: {nonce}");
+    } else {
+        println!("Nonce:{nonce}");
     }
 
     Ok(())
@@ -102,39 +110,56 @@ pub fn encode(args: EncodeArgs) -> Result<()> {
 
 fn decrypt_helper(
     ciphertext: &[u8],
+    passphrase_arg: &Option<String>,
     key_arg: &Option<String>,
-    nonce_arg: Option<String>,
+    nonce: &str,
 ) -> Result<Vec<u8>> {
-    let mess = if let Some(base64_dec_key) = key_arg {
-        if nonce_arg.is_none() {
-            return Err(Error::MissingArg("Nonce for decryption".to_string()));
-        }
-        let nonce = STANDARD
-            .decode(nonce_arg.unwrap())
-            .map_err(|_| Error::InvalidNonce)?;
-        let dec_key = STANDARD
-            .decode(base64_dec_key)
-            .map_err(|_| Error::InvalidKey)?;
+    if passphrase_arg.is_some() && key_arg.is_some() {
+        return Err(Error::OverlapKeyPassphrase);
+    }
 
-        aes256gcm_decrypt(ciphertext, &dec_key, &nonce)?
+    let dec_key = if let Some(base64_dec_key) = key_arg {
+        STANDARD
+            .decode(base64_dec_key)
+            .map_err(|_| Error::InvalidKey)?
     } else {
-        ciphertext.to_vec()
+        if let Some(passphrase) = passphrase_arg {
+            sha3_hash(passphrase)?
+        } else {
+            get_passphrase_key()?
+        }
     };
 
-    Ok(mess)
+    let nonce = STANDARD
+        .decode(nonce)
+        .map_err(|_| Error::InvalidNonce(nonce.to_string()))?;
+    aes256gcm_decrypt(ciphertext, &dec_key, &nonce)
 }
 
 /// Searches for a message hidden in a PNG file and prints the message if one is found
 pub fn decode(args: DecodeArgs) -> Result<()> {
     let png = Png::try_from_file(Path::new(&args.in_file_path))?;
     if let Some(mess_chunk) = png.chunk_by_type(&args.chunk_type)? {
-        let mess_bytes = decrypt_helper(mess_chunk.data(), &args.key, args.nonce)?;
+        let mess_bytes =
+            decrypt_helper(mess_chunk.data(), &args.passphrase, &args.key, &args.nonce)?;
         let mess = String::from_utf8_lossy(&mess_bytes);
-        println!("The secret message: {mess}");
+        if args.verbosity {
+            println!("Your secret message: {mess}");
+        } else {
+            println!("Message:{mess}");
+        }
         Ok(())
     } else {
         Err(Error::NotFoundSecMess)
     }
+}
+
+/// Catches the passphrase typed by a user, then
+/// SHA3-hasing it to derive a symmetric key for encryption/decryption
+fn get_passphrase_key() -> Result<Vec<u8>> {
+    let passphrase = rpassword::prompt_password("Enter your passphrase: ")
+        .map_err(|_| Error::PassphraseReadErr)?;
+    sha3_hash(&passphrase)
 }
 
 /// Removes a chunk from a PNG file and saves the result
@@ -162,15 +187,42 @@ pub fn print_chunks(args: PrintArgs) -> Result<()> {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_aes_crypto() -> Result<()> {
-        let key_arg = Some("5f6/dVmvW1c/lxQ/22Mqax/RvhzzZ4a5EBFCXYt3K4w=".to_string());
-        let mess = "FooBar!";
-        let (ciphertext, nonce) = encrypt_helper(&key_arg, mess.as_bytes())?;
-        assert!(nonce.is_some());
-        let plaintext = decrypt_helper(ciphertext.as_slice(), &key_arg, nonce)?;
+    const KEY: &str = "5f6/dVmvW1c/lxQ/22Mqax/RvhzzZ4a5EBFCXYt3K4w=";
+    const MESSAGE: &str = "FooBar!";
+
+    fn encrypt_decrypt_helper(
+        message: &str,
+        key_arg: &Option<String>,
+        passphrase_arg: &Option<String>,
+    ) -> Result<()> {
+        let (ciphertext, nonce) = encrypt_helper(&key_arg, &passphrase_arg, message.as_bytes())?;
+        let plaintext = decrypt_helper(ciphertext.as_slice(), &passphrase_arg, &key_arg, &nonce)?;
         let plaintext = String::from_utf8_lossy(&plaintext);
-        assert_eq!(plaintext, mess);
+        assert_eq!(plaintext, message);
         Ok(())
+    }
+
+    #[test]
+    fn test_aes_crypto_with_key() -> Result<()> {
+        let key_arg = Some(KEY.to_string());
+        let passphrase_arg: Option<String> = None;
+        encrypt_decrypt_helper(MESSAGE, &key_arg, &passphrase_arg)?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_aes_crypto_with_passphrase() -> Result<()> {
+        let key_arg = None;
+        let passphrase_arg = Some("HelloWorld!".to_string());
+        encrypt_decrypt_helper(MESSAGE, &key_arg, &passphrase_arg)?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_aes_crypto_with_passphrase_and_key() {
+        let key_arg = Some(KEY.to_string());
+        let passphrase_arg = Some("HelloWorld!".to_string());
+        let result = encrypt_decrypt_helper(MESSAGE, &key_arg, &passphrase_arg);
+        assert!(matches!(result, Err(Error::OverlapKeyPassphrase)));
     }
 }

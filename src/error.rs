@@ -55,12 +55,18 @@ pub enum Error {
     #[error("Invalid key for AES256")]
     InvalidKey,
 
-    #[error("Invalid Nonce")]
-    InvalidNonce,
+    #[error("Invalid Nonce: {0}")]
+    InvalidNonce(String),
 
     #[error("Could not encrypt your data chunk")]
     EncryptionErr,
 
-    #[error("Could not decrypt your secret message")]
+    #[error("Could not decrypt your secret message, maybe you used a wrong passphrase or base64-encoded key")]
     DecryptionErr,
+
+    #[error("Could not read your passphrase")]
+    PassphraseReadErr,
+
+    #[error("You have to choose one of two options: -k OR -p")]
+    OverlapKeyPassphrase,
 }
