@@ -89,6 +89,13 @@ pub struct DecodeArgs {
 }
 
 #[derive(Args, Debug)]
+pub struct SearchArgs {
+    /// Path to the input PNG file
+    #[arg(short, long, required = true)]
+    pub in_file_path: PathBuf,
+}
+
+#[derive(Args, Debug)]
 pub struct RemoveArgs {
     /// Path to the input PNG file
     #[arg(short, long, required = true)]

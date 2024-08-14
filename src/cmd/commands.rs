@@ -53,7 +53,11 @@ fn encrypt_helper(
 
 /// Helper function for the `Encode` command.
 /// Parse `input_file_path` and `url` args and return the path to input PNG file.
-fn input_png_helper(file_arg: &Option<PathBuf>, url_arg: &Option<String>) -> Result<PathBuf> {
+fn input_png_helper(
+    file_arg: &Option<PathBuf>,
+    url_arg: &Option<String>,
+    verbosity: bool,
+) -> Result<PathBuf> {
     let png_file_path = if let Some(file_path) = file_arg {
         // PNG file is loaded at rest
         Ok(file_path.clone())
@@ -78,6 +82,9 @@ fn input_png_helper(file_arg: &Option<PathBuf>, url_arg: &Option<String>) -> Res
                 .perform()
                 .map_err(|_| Error::CurlErr(url.clone()))?;
 
+            if verbosity {
+                println!("Downloading {url}... done")
+            }
             Ok(PathBuf::from_str(file_name).unwrap())
         } else {
             Err(Error::MissingArg("Input PNG file or URL".to_string()))
@@ -89,17 +96,27 @@ fn input_png_helper(file_arg: &Option<PathBuf>, url_arg: &Option<String>) -> Res
 
 /// Encodes a message into a PNG file and saves the result
 pub fn encode(args: EncodeArgs) -> Result<()> {
+    let file_path = input_png_helper(&args.in_file_path, &args.url, args.verbosity)?;
+    let mut png = Png::try_from_file(Path::new(&file_path))?;
+    if args.verbosity {
+        println!("Reading {}... done", file_path.to_string_lossy());
+    }
+
     let chunk_type = ChunkType::from_str(&args.chunk_type)?;
     let (chunk_content, nonce) = encrypt_helper(&args.key, &args.passphrase, args.mess.as_bytes())?;
     let chunk = Chunk::new(chunk_type, &chunk_content);
+    if args.verbosity {
+        println!("Encrypting your message... done");
+    }
 
-    let file_path = input_png_helper(&args.in_file_path, &args.url)?;
-    let mut png = Png::try_from_file(Path::new(&file_path))?;
     png.append_chunk(chunk)?;
 
     png.to_file(Path::new(&args.out_file_path))?;
-
     if args.verbosity {
+        println!(
+            "Embeding your secret message to {}... done",
+            args.out_file_path.to_string_lossy()
+        );
         println!("Please SAVE a copy of this base64-encoded Nonce so that you can use it to decrypt your message later: {nonce}");
     } else {
         println!("Nonce:{nonce}");
@@ -139,9 +156,17 @@ fn decrypt_helper(
 /// Searches for a message hidden in a PNG file and prints the message if one is found
 pub fn decode(args: DecodeArgs) -> Result<()> {
     let png = Png::try_from_file(Path::new(&args.in_file_path))?;
+    if args.verbosity {
+        println!("Reading {}... done", args.in_file_path.to_string_lossy());
+    }
+
     if let Some(mess_chunk) = png.chunk_by_type(&args.chunk_type)? {
         let mess_bytes =
             decrypt_helper(mess_chunk.data(), &args.passphrase, &args.key, &args.nonce)?;
+        if args.verbosity {
+            println!("Decrypting your secret message... done");
+        }
+
         let mess = String::from_utf8_lossy(&mess_bytes);
         if args.verbosity {
             println!("Your secret message: {mess}");
