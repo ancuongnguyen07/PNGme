@@ -12,10 +12,12 @@ pub struct App {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
-    /// Encodes a message into a PNG file and save the result
+    /// Encodes a message into a PNG file
     Encode(EncodeArgs),
-    /// Searches for a message hidden in a PNG file and prints the message if one is found
+    /// Decode a hidden message a PNG file
     Decode(DecodeArgs),
+    /// Search for potential hidden message
+    Search(SearchArgs),
     /// Removes a chunk from a PNG file and saves the result
     Remove(RemoveArgs),
     /// Prints all of the chunks in a PNG file
@@ -93,6 +95,10 @@ pub struct SearchArgs {
     /// Path to the input PNG file
     #[arg(short, long, required = true)]
     pub in_file_path: PathBuf,
+
+    /// Verbosity
+    #[arg(short, long)]
+    pub verbosity: bool,
 }
 
 #[derive(Args, Debug)]

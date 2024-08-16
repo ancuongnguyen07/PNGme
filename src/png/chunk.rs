@@ -8,7 +8,6 @@ use crc::{Crc, CRC_32_ISO_HDLC};
 
 #[derive(Clone)]
 pub struct Chunk {
-    length: u32,
     chunk_type: ChunkType,
     chunk_data: DisplayableVec,
     crc: u32,
@@ -16,14 +15,11 @@ pub struct Chunk {
 
 impl Chunk {
     pub fn new(chunk_type: ChunkType, data: &[u8]) -> Chunk {
-        let length = data.len() as u32;
-
         let chunk_data = DisplayableVec::new(data);
 
         let crc = compute_crc(&chunk_type.bytes(), &chunk_data.0);
 
         Self {
-            length,
             chunk_type,
             chunk_data,
             crc,
@@ -32,7 +28,7 @@ impl Chunk {
 
     /// The length of the data portion of this chunk.
     pub fn length(&self) -> u32 {
-        self.length
+        self.data().len() as u32
     }
 
     /// The `ChunkType` of this chunk
@@ -50,6 +46,14 @@ impl Chunk {
         self.crc
     }
 
+    /// Prepends the given tag to the current chunk data
+    pub fn prepend(&mut self, tag: &[u8]) -> Result<()> {
+        self.chunk_data.0 = [tag, &self.chunk_data.0].concat();
+        // recompute CRC as the chunk data itself has changed
+        self.crc = compute_crc(&self.chunk_type.bytes(), &self.chunk_data.0);
+        Ok(())
+    }
+
     /// Returns the data stored in this chunk as a `String`. This function will return an error
     /// if the stored data is not valid UTF-8.
     pub fn data_as_string(&self) -> Result<String> {
@@ -64,7 +68,7 @@ impl Chunk {
     /// 3. The data itself **(`length` bytes)**
     /// 4. The CRC of the chunk type and data **(4 bytes)**
     pub fn as_bytes(&self) -> Vec<u8> {
-        self.length
+        self.length()
             .to_be_bytes()
             .iter()
             .chain(self.chunk_type.bytes().iter())
@@ -128,7 +132,6 @@ impl TryFrom<&[u8]> for Chunk {
         }
 
         Ok(Self {
-            length,
             chunk_type,
             chunk_data,
             crc,
@@ -206,21 +209,7 @@ mod tests {
 
     #[test]
     fn test_valid_chunk_from_bytes() {
-        let data_length: u32 = 42;
-        let chunk_type = "RuSt".as_bytes();
-        let message_bytes = "This is where your secret message will be!".as_bytes();
-        let crc: u32 = 2882656334;
-
-        let chunk_data: Vec<u8> = data_length
-            .to_be_bytes()
-            .iter()
-            .chain(chunk_type.iter())
-            .chain(message_bytes.iter())
-            .chain(crc.to_be_bytes().iter())
-            .copied()
-            .collect();
-
-        let chunk = Chunk::try_from(chunk_data.as_ref()).unwrap();
+        let chunk = testing_chunk();
 
         let chunk_string = chunk.data_as_string().unwrap();
         let expected_chunk_string = String::from("This is where your secret message will be!");
@@ -253,23 +242,22 @@ mod tests {
     }
 
     #[test]
-    pub fn test_chunk_trait_impls() {
-        let data_length: u32 = 42;
-        let chunk_type = "RuSt".as_bytes();
-        let message_bytes = "This is where your secret message will be!".as_bytes();
-        let crc: u32 = 2882656334;
-
-        let chunk_data: Vec<u8> = data_length
-            .to_be_bytes()
-            .iter()
-            .chain(chunk_type.iter())
-            .chain(message_bytes.iter())
-            .chain(crc.to_be_bytes().iter())
-            .copied()
-            .collect();
-
-        let chunk: Chunk = TryFrom::try_from(chunk_data.as_ref()).unwrap();
-
+    fn test_chunk_trait_impls() {
+        let chunk: Chunk = testing_chunk();
         let _chunk_string = format!("{}", chunk);
+    }
+
+    #[test]
+    fn test_prepend_chunk_data() -> Result<()> {
+        let mut chunk = testing_chunk();
+        let tag = "MyTag".as_bytes();
+        let new_chunk_data = "MyTagThis is where your secret message will be!".as_bytes();
+        let new_crc = compute_crc(&chunk.chunk_type().bytes(), &new_chunk_data);
+        assert_ne!(new_crc, chunk.crc());
+
+        chunk.prepend(tag)?;
+        assert_eq!(new_crc, chunk.crc());
+        assert!(chunk.data().starts_with(tag));
+        Ok(())
     }
 }

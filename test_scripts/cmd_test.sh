@@ -18,9 +18,10 @@ success_counter=0
 
 LINE_BREAKER="--------------------------------------------------------------"
 
-assert_message() {
-    local plaintext=$1
-    if [ "$plaintext" == $MESSAGE ]; then
+assert_eq() {
+    local target=$1
+    local ref=$2
+    if [ "$target" == "$ref" ]; then
         echo PASSED
         success_counter=$((success_counter + 1))
     else
@@ -43,6 +44,10 @@ capture_secret_mess() {
     sed -n 's/^Message:\(.*\)/\1/p'
 }
 
+capture_nr_hidden_mess() {
+    sed -n 's/^Total:\(.*\)/\1/p'
+}
+
 # Remove the Carriage Return '\r' at the end of string
 remove_end_cr() {
     tr -d '\r'
@@ -55,32 +60,47 @@ echo "TEST encrypt/decrypt with the given key"
 NONCE=$($PNGMe encode -i $OG_FILE -o $ENC_FILE -c $CHUNK_TYPE -m $MESSAGE -k $KEY | capture_nonce)
 # Decode the decrypted message
 PLAINTEXT=$($PNGMe decode -i $ENC_FILE -c $CHUNK_TYPE -k $KEY -n "$NONCE" | capture_secret_mess)
-assert_message "$PLAINTEXT"
+assert_eq "$PLAINTEXT" "$MESSAGE"
 echo $LINE_BREAKER
 
 echo "TEST encrypt/decrypt with the given passphrase"
 NONCE=$($PNGMe encode -i $OG_FILE -o $ENC_FILE -c $CHUNK_TYPE -m $MESSAGE -p $PASSPHRASE | capture_nonce)
 PLAINTEXT=$($PNGMe decode -i $ENC_FILE -c $CHUNK_TYPE -p $PASSPHRASE -n "$NONCE" | capture_secret_mess)
-assert_message "$PLAINTEXT"
+assert_eq "$PLAINTEXT" "$MESSAGE"
 echo $LINE_BREAKER
 
 echo "TEST encrypt/decrypt with the typed passphrase"
 # As the output from TTY session usually include a Carriage Return '\r', we need to trim it to get the expected output
 NONCE=$(./test_scripts/run_expect_tty.exp "$PNGMe encode -i $OG_FILE -o $ENC_FILE -c $CHUNK_TYPE -m $MESSAGE" "$PASSPHRASE" | capture_nonce | remove_end_cr)
 PLAINTEXT=$(./test_scripts/run_expect_tty.exp "$PNGMe decode -i $ENC_FILE -c $CHUNK_TYPE -n $NONCE" "$PASSPHRASE" | capture_secret_mess | remove_end_cr)
-assert_message "$PLAINTEXT"
+assert_eq "$PLAINTEXT" "$MESSAGE"
+echo $LINE_BREAKER
+
+echo "TEST search hidden message candidates"
+MESSAGE2="Another Secret!"
+CHUNK_TYPE2="xyzc"
+$PNGMe encode -i $ENC_FILE -o $ENC_FILE -c $CHUNK_TYPE2 -m "$MESSAGE2" -p $PASSPHRASE >/dev/null
+NR_CANDIDATES=$($PNGMe search -i $ENC_FILE | capture_nr_hidden_mess)
+assert_eq "$NR_CANDIDATES" "2"
+echo $LINE_BREAKER
+
+echo "TEST search hidden message in an original image"
+NR_CANDIDATES=$($PNGMe search -i $OG_FILE | capture_nr_hidden_mess)
+assert_eq "$NR_CANDIDATES" "0"
 echo $LINE_BREAKER
 
 echo "TEST SCRIPT ENDS ==========================================="
 
 echo "SUMMARY:"
-echo -e "${GREEN}PASSED: $success_counter test case(s)"
-echo -e "${RED}FAILED: $fail_counter test case(s)"
+echo -e "PASSED: $success_counter test case(s)"
+echo -e "FAILED: $fail_counter test case(s)"
 
 if [ "$fail_counter" -gt 0 ]; then
     # indicate error
+    echo -e "Test result: ${RED}FAILED"
     exit 1
 else
     # indicate success
+    echo -e "Test result: ${GREEN}PASSED"
     exit 0
 fi

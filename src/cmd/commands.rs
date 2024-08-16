@@ -5,7 +5,7 @@ use std::str::FromStr;
 
 use curl::easy::Easy;
 
-use crate::cmd::args::{DecodeArgs, EncodeArgs, PrintArgs, RemoveArgs};
+use crate::cmd::args::{DecodeArgs, EncodeArgs, PrintArgs, RemoveArgs, SearchArgs};
 use crate::png::Chunk;
 use crate::png::ChunkType;
 use crate::png::Png;
@@ -14,6 +14,7 @@ use crate::{crypto, Result};
 use std::fs::File;
 use std::io::Write;
 
+use crate::png::TAG;
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 
 /// Helper function for the `Encode` command.
@@ -109,7 +110,7 @@ pub fn encode(args: EncodeArgs) -> Result<()> {
         println!("Encrypting your message... done");
     }
 
-    png.append_chunk(chunk)?;
+    png.append_chunk(chunk, true)?;
 
     png.to_file(Path::new(&args.out_file_path))?;
     if args.verbosity {
@@ -161,8 +162,11 @@ pub fn decode(args: DecodeArgs) -> Result<()> {
     }
 
     if let Some(mess_chunk) = png.chunk_by_type(&args.chunk_type)? {
-        let mess_bytes =
-            decrypt_helper(mess_chunk.data(), &args.passphrase, &args.key, &args.nonce)?;
+        let ciphertext = mess_chunk
+            .data()
+            .strip_prefix(&TAG)
+            .ok_or(Error::TagMissing)?;
+        let mess_bytes = decrypt_helper(ciphertext, &args.passphrase, &args.key, &args.nonce)?;
         if args.verbosity {
             println!("Decrypting your secret message... done");
         }
@@ -177,6 +181,30 @@ pub fn decode(args: DecodeArgs) -> Result<()> {
     } else {
         Err(Error::NotFoundSecMess)
     }
+}
+
+fn search_helper(png: &Png) -> Vec<&Chunk> {
+    png.chunks()
+        .iter()
+        .filter(|&chunk| chunk.data().starts_with(&TAG))
+        .collect()
+}
+
+pub fn search(args: SearchArgs) -> Result<()> {
+    let png = Png::try_from_file(Path::new(&args.in_file_path))?;
+    let candidates = search_helper(&png);
+    for (ind, chunk) in candidates.iter().enumerate() {
+        let mess_str = String::from_utf8_lossy(&chunk.data());
+        println!("Message {}: {}", ind + 1, mess_str);
+    }
+
+    let total = candidates.len();
+    if args.verbosity {
+        println!("PNGme has found {total} potential hidden messages");
+    } else {
+        println!("Total:{total}");
+    }
+    Ok(())
 }
 
 /// Catches the passphrase typed by a user, then

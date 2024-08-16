@@ -10,8 +10,11 @@ use std::io::{Read, Write};
 
 use super::ChunkType;
 
-// Fill in this array with the correct values per the PNG spec
+/// Fill in this array with the correct values per the PNG spec
 const STANDARD_HEADER: [u8; 8] = [137, 80, 78, 71, 13, 10, 26, 10];
+/// This "PNGme" tag is gonna be prepended to each new chunk, marking that
+/// the newly-added chunk is processed by PNGme -> Searchable PNGme-processed chunks
+pub const TAG: [u8; 5] = [80, 78, 71, 109, 101];
 
 pub struct Png {
     header: [u8; 8],
@@ -56,13 +59,16 @@ impl Png {
     }
 
     /// Appends a chunk to the end of this `Png` file's `Chunk` list.
-    pub fn append_chunk(&mut self, chunk: Chunk) -> Result<()> {
+    pub fn append_chunk(&mut self, mut chunk: Chunk, is_tagged: bool) -> Result<()> {
         if self
             .chunks
             .iter()
             .any(|chunk_iter| chunk.chunk_type() == chunk_iter.chunk_type())
         {
             return Err(Error::DuplicatedChunkType);
+        }
+        if is_tagged {
+            chunk.prepend(&TAG)?;
         }
         self.chunks.push(chunk);
         Ok(())
@@ -262,9 +268,9 @@ mod tests {
     }
 
     #[test]
-    fn test_append_chunk() -> Result<()> {
+    fn test_append_chunk_without_tag() -> Result<()> {
         let mut png = testing_png();
-        png.append_chunk(chunk_from_strings("TeSt", "Message").unwrap())?;
+        png.append_chunk(chunk_from_strings("TeSt", "Message").unwrap(), false)?;
         let chunk = png.chunk_by_type("TeSt")?.expect("Should have Some(chunk)");
         assert_eq!(&chunk.chunk_type().to_string(), "TeSt");
         assert_eq!(&chunk.data_as_string().unwrap(), "Message");
@@ -272,9 +278,19 @@ mod tests {
     }
 
     #[test]
+    fn test_append_chunk_tag() -> Result<()> {
+        let mut png = testing_png();
+        png.append_chunk(chunk_from_strings("TeSt", "Message").unwrap(), true)?;
+        let chunk = png.chunk_by_type("TeSt")?.expect("Should have Some(chunk)");
+        assert_eq!(&chunk.chunk_type().to_string(), "TeSt");
+        assert_eq!(&chunk.data_as_string().unwrap(), "PNGmeMessage");
+        Ok(())
+    }
+
+    #[test]
     fn test_remove_chunk() -> Result<()> {
         let mut png = testing_png();
-        png.append_chunk(chunk_from_strings("TeSt", "Message").unwrap())?;
+        png.append_chunk(chunk_from_strings("TeSt", "Message").unwrap(), false)?;
         png.remove_chunk("TeSt").unwrap();
         let chunk = png.chunk_by_type("TeSt")?;
         assert!(chunk.is_none());

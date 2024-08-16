@@ -16,6 +16,7 @@ fn main() -> Result<()> {
     let result = match cli.command {
         Command::Decode(args) => decode(args),
         Command::Encode(args) => encode(args),
+        Command::Search(args) => search(args),
         Command::Remove(args) => remove(args),
         Command::Print(args) => print_chunks(args),
     };

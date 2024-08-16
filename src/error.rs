@@ -64,6 +64,9 @@ pub enum Error {
     #[error("Could not decrypt your secret message, maybe you used a wrong passphrase or base64-encoded key")]
     DecryptionErr,
 
+    #[error("Could not find any tagged message")]
+    TagMissing,
+
     #[error("Could not read your passphrase")]
     PassphraseReadErr,
 
