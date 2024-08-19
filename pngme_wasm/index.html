@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>PNGme WASM!</title>
+    <script src="./bootstrap.js"></script>
+
+</head>
+
+<body>
+    <noscript>This page contains webassembly and javascript content, please enable javascript in your
+        browser.</noscript>
+    <h3>Hello World from PNGme WASM!</h3>
+
+    <form id="op_form" action="/api" method="post">
+        <fieldset>
+            <legend>Select the operation mode:</legend>
+            <div>
+                <input type="radio" id="encrypt" name="op_mode" value="encrypt" checked />
+                <label for="encrypt">Encrypt</label>
+            </div>
+            <div>
+                <input type="radio" id="decrypt" name="op_mode" value="decrypt" />
+                <label for="decrypt">Decrypt</label>
+            </div>
+        </fieldset>
+        <p>
+            <input type="url" id="url" placeholder="Enter the PNG image URL..." />
+            <b>OR</b>
+            <label for="uploaded_file">Upload PNG image from your computer</label>
+            <input type="file" id="uploaded_file" />
+        </p>
+        <p>
+            <input type="password" placeholder="Type your passphrase" />
+        </p>
+        <p>
+            <input placeholder="Enter your message" type="text" id="message" hidden />
+            <input placeholder="Enter your chunk type" maxlength="4" type="text" id="chunk_type" hidden />
+        </p>
+        <p>
+            <button>Do PNGme!!!</button>
+        </p>
+    </form>
+</body>
+
+</html>

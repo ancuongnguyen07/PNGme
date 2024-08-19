@@ -5,7 +5,7 @@
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 
-PNGMe=./target/debug/pngme
+PNGMe=../target/debug/pngme-cli
 KEY="Roh9FEiuw+UiVPunRLM+Qrxcz+0bxeKQ/MS4ri1aUT8="
 OG_FILE=images/dog.png
 ENC_FILE=tmp/dog_secret.png

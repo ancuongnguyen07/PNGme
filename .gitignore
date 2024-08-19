@@ -1,3 +1,4 @@
 /target
 secret_*
-/tmp
+*/tmp
+*/node_modules

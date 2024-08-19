@@ -1,0 +1,22 @@
+[package]
+name = "pngme_core"
+version = "0.1.0"
+edition = "2021"
+authors = ["Cuong Nguyen <ancuongnguyen07@gmail.com>"]
+license = "MIT License"
+repository = "https://github.com/ancuongnguyen07/PNGme/pngme_core"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "pngme_core"
+crate-type = ["rlib"]
+
+[dependencies]
+aes-gcm = "0.10.3"
+# Override the dependency `getrandom` of `aes-gcm` to get WASM supported.
+getrandom = { version = "0.2.15", features = ["js"] }
+base64 = "0.22.1"
+crc = "3.0.1"
+sha3 = "0.10.8"
+thiserror = "1.0.56"
