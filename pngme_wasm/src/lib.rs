@@ -1,11 +1,16 @@
 mod utils;
 
-use std::path::Path;
+use pngme_core::png::TAG;
+
 use std::str::FromStr;
 
 use pngme_core::crypto;
 use pngme_core::png::{Chunk, ChunkType, Png};
 use wasm_bindgen::prelude::*;
+
+use base64::{engine::general_purpose::STANDARD, Engine as _};
+
+type Result<T> = std::result::Result<T, JsError>;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
@@ -15,49 +20,92 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 #[wasm_bindgen]
 pub struct PublicMaterial {
-    ciphertext: Box<[u8]>,
+    encoded_bytes: Box<[u8]>,
     nonce: String,
 }
 
 #[wasm_bindgen]
 impl PublicMaterial {
-    pub fn new(ciphertext: &[u8], nonce: &str) -> Self {
-        PublicMaterial {
-            ciphertext: ciphertext.to_vec().into_boxed_slice(),
-            nonce: nonce.to_string(),
-        }
+    #[wasm_bindgen(getter)]
+    pub fn encoded_bytes(&self) -> Box<[u8]> {
+        self.encoded_bytes.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn nonce(&self) -> String {
+        self.nonce.clone()
     }
 }
 
 #[wasm_bindgen]
-pub fn encrypt(
-    file_path: &str,
+pub fn encode(
+    input_data: &[u8],
     passphrase: &str,
     message: &str,
     chunk_type: &str,
-) -> Result<PublicMaterial, JsError> {
-    todo!();
-    let png = Png::try_from_file(Path::new(file_path)).map_err(|e| JsError::from(e))?;
+) -> Result<PublicMaterial> {
+    log!("Encoding....");
+    // let mut png = Png::try_from_file(Path::new(input_data)).map_err(|e| JsError::from(e))?;
+    let mut png = Png::try_from(input_data).map_err(|e| JsError::from(e))?;
+    log!("Tried_from raw bytes to png...done");
+
     let chunk_type = ChunkType::from_str(chunk_type).map_err(|e| JsError::from(e))?;
+    log!("Converting chunk_type...done");
     let key = crypto::sha3_hash(passphrase).map_err(|e| JsError::from(e))?;
-    let (chunk_content, nonce) =
+    let (chunk_content, nonce_raw) =
         crypto::aes256gcm_encrypt(message.as_bytes(), &key).map_err(|e| JsError::from(e))?;
+    log!("Encrypting...done");
 
     let new_chunk = Chunk::new(chunk_type, &chunk_content);
-    png.append_chunk(new_chunk, true);
+    png.append_chunk(new_chunk, true)
+        .map_err(|e| JsError::from(e))?;
+    log!("Appending chunk...done");
+
+    // base64-encode the raw nonce
+    let nonce = STANDARD.encode(&nonce_raw);
+    let encoded_bytes = png.as_bytes().into_boxed_slice();
+
+    Ok(PublicMaterial {
+        encoded_bytes,
+        nonce,
+    })
+}
+
+#[wasm_bindgen]
+pub fn decode(
+    input_data: &[u8],
+    passphrase: &str,
+    nonce: &str,
+    chunk_type: &str,
+) -> Result<String> {
+    log!("Decoding...");
+    let png = Png::try_from(input_data).map_err(|e| JsError::from(e))?;
+    log!("Tried_from raw bytes to png...done");
+
+    let key = crypto::sha3_hash(passphrase).map_err(|e| JsError::from(e))?;
+    let nonce = STANDARD
+        .decode(nonce)
+        .map_err(|_| JsError::new("Invalid nonce"))?;
+    log!("Base64-decoding Nonce...done");
+    if let Some(mess_chunk) = png
+        .chunk_by_type(chunk_type)
+        .map_err(|e| JsError::from(e))?
+    {
+        let ciphertext = mess_chunk
+            .data()
+            .strip_prefix(&TAG)
+            .ok_or(JsError::new("Tag missing"))?;
+        log!("Found a hidden message");
+        let plaintext_bytes =
+            crypto::aes256gcm_decrypt(ciphertext, &key, &nonce).map_err(|e| JsError::from(e))?;
+        log!("Decrypting...done");
+        Ok(String::from_utf8_lossy(&plaintext_bytes).to_string())
+    } else {
+        Err(JsError::new("Hidden message not found"))
+    }
 }
 
 #[wasm_bindgen]
 extern "C" {
     fn alert(s: &str);
-}
-
-#[wasm_bindgen]
-pub fn greet() {
-    alert("Hello WASM!");
-}
-
-/// Capture filename from a filepath
-fn get_filename() {
-    todo!();
 }

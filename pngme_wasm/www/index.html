@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>PNGme WASM!</title>
+    <script src="./bootstrap.js"></script>
+
+</head>
+
+<body>
+    <noscript>This page contains webassembly and javascript content, please enable javascript in your
+        browser.</noscript>
+    <h3>Hello World! from PNGme WASM!</h3>
+
+    <form id="pngmeForm">
+        <div>
+            <fieldset>
+                <legend>Select the operation mode:</legend>
+                <div>
+                    <input type="radio" id="encryptRadio" name="opMode" value="encode" checked />
+                    <label for="encryptRadio">Encrypt</label>
+                </div>
+                <div>
+                    <input type="radio" id="decryptRadio" name="opMode" value="decode" />
+                    <label for="decryptRadio">Decrypt</label>
+                </div>
+            </fieldset>
+            <p>
+                <input type="url" id="url" placeholder="Enter the PNG image URL..." class="shouldReset" />
+                <b>OR</b>
+                <label for="uploadInput">Upload PNG image from your computer</label>
+                <input type="file" id="uploadInput" accept=".png, image/png" class="shouldReset" />
+            </p>
+            <p>
+                <input type="password" id="passphrase" placeholder="Type your passphrase" class="shouldReset"
+                    required />
+                <input type="text" id="nonceInput" placeholder="Enter the Nonce" class="shouldReset" hidden />
+            </p>
+            <p>
+                <input placeholder="Enter your chunk type" maxlength="4" minlength="4" type="text" id="chunkType"
+                    class="shouldReset" required />
+                <input placeholder="Enter your message" type="text" id="message" class="shouldReset" />
+            </p>
+        </div>
+        <div>
+            <input type="submit" id="submitButton" value="Do PNGme!!!" />
+        </div>
+    </form>
+
+    <!-- Box containing result from the chosen operation -->
+    <div id="encodeResultBox" hidden>
+        <p>Nonce: <span id="nonceValue"></span></p>
+        <img id="outputImage" alt="Encoded PNG image" />
+        <br />
+        <a id="downloadLink" href="#">Download Image</a>
+    </div>
+
+    <div id="decodeResultBox" hidden>
+        <p>Hidden Message: <span id="hiddenMessage"></span></p>
+    </div>
+</body>
+
+</html>

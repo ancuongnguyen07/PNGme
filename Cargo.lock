@@ -463,7 +463,6 @@ name = "pngme_core"
 version = "0.1.0"
 dependencies = [
  "aes-gcm",
- "base64",
  "crc",
  "getrandom",
  "sha3",
@@ -474,6 +473,7 @@ dependencies = [
 name = "pngme_wasm"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "console_error_panic_hook",
  "pngme_core",
  "wasm-bindgen",

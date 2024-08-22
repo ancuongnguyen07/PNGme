@@ -1,5 +1,6 @@
 const path = require("path");
 const CopyPlugin = require("copy-webpack-plugin");
+const HtmlWebpackPlugin = require('html-webpack-plugin');
 // const WasmPackPlugin = require("@wasm-tool/wasm-pack-plugin");
 
 const dist = path.resolve(__dirname, "dist");
@@ -11,7 +12,8 @@ module.exports = {
     },
     output: {
         path: dist,
-        filename: "bootstrap.js"
+        filename: "bootstrap.js",
+        // publicPath: '/',
     },
     devServer: {
         static: {
@@ -19,6 +21,7 @@ module.exports = {
         },
         port: 7800,
         compress: true,
+        hot: true,
     },
     experiments: {
         syncWebAssembly: true // Enable WebAssembly experiments
@@ -29,6 +32,10 @@ module.exports = {
                 { from: "index.html", to: "index.html" }
             ]
         }),
+
+        // new HtmlWebpackPlugin({
+        //     template: 'index.html'
+        // }),
 
         // new WasmPackPlugin({
         //     crateDirectory: __dirname,
