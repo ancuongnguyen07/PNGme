@@ -22,8 +22,10 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-cargo-
     
+    - name: Code Format
+      run: cargo fmt --check
     - name: Lint
-      run: cargo clipp -- -D warnings
+      run: cargo clippy -- -Dwarnings
     - name: Build
       run: cargo build --verbose
 
