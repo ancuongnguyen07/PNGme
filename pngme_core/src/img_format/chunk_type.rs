@@ -17,11 +17,7 @@ impl ChunkType {
     /// Returns true if the reserved byte is valid and all four bytes are represented by the characters A-Z or a-z.
     /// Note that this chunk type should always be valid as it is validated during construction.
     pub fn is_valid(&self) -> bool {
-        self.is_reserved_bit_valid()
-            && match are_valid_chars(&self.bytes.iter()) {
-                Ok(_) => true,
-                Err(_) => false,
-            }
+        self.is_reserved_bit_valid() && are_valid_chars(&self.bytes.iter()).is_ok()
     }
 
     /// Returns the property state of the first byte as described in the PNG spec

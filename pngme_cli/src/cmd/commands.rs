@@ -7,15 +7,15 @@ use curl::easy::Easy;
 
 use crate::cmd::args::{DecodeArgs, EncodeArgs, PrintArgs, RemoveArgs, SearchArgs};
 use crate::Result;
-use pngme_core::png::Chunk;
-use pngme_core::png::ChunkType;
-use pngme_core::png::Png;
+use pngme_core::img_format::Chunk;
+use pngme_core::img_format::ChunkType;
+use pngme_core::img_format::Png;
 
 use std::fs::File;
 use std::io::Write;
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
-use pngme_core::png::TAG;
+use pngme_core::img_format::TAG;
 
 /// Helper function for the `Encode` command.
 /// Returns base64-encoded ciphertext and Nonce.
@@ -39,7 +39,7 @@ fn encrypt_helper(
         // Use the key derived from the given passphrase for encryption
         if let Some(passphrase) = passphrase_arg {
             // Hash the given passphrase
-            sha3_hash(passphrase).map_err(|e| Error::CoreLibErr(e))?
+            sha3_hash(passphrase).map_err(Error::CoreLibErr)?
         } else {
             // Promt to user for typing their passphrase invisibly
             get_passphrase_key()?

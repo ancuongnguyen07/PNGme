@@ -1,11 +1,11 @@
 mod utils;
 
-use pngme_core::png::TAG;
+use pngme_core::img_format::TAG;
 
 use std::str::FromStr;
 
 use pngme_core::crypto;
-use pngme_core::png::{Chunk, ChunkType, Png};
+use pngme_core::img_format::{Chunk, ChunkType, Png};
 use wasm_bindgen::prelude::*;
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
@@ -45,20 +45,19 @@ pub fn encode(
     chunk_type: &str,
 ) -> Result<PublicMaterial> {
     log!("Encoding....");
-    // let mut png = Png::try_from_file(Path::new(input_data)).map_err(|e| JsError::from(e))?;
-    let mut png = Png::try_from(input_data).map_err(|e| JsError::from(e))?;
+    // let mut png = Png::try_from_file(Path::new(input_data)).map_err(JsError::from)?;
+    let mut png = Png::try_from(input_data).map_err(JsError::from)?;
     log!("Tried_from raw bytes to png...done");
 
-    let chunk_type = ChunkType::from_str(chunk_type).map_err(|e| JsError::from(e))?;
+    let chunk_type = ChunkType::from_str(chunk_type).map_err(JsError::from)?;
     log!("Converting chunk_type...done");
-    let key = crypto::sha3_hash(passphrase).map_err(|e| JsError::from(e))?;
+    let key = crypto::sha3_hash(passphrase).map_err(JsError::from)?;
     let (chunk_content, nonce_raw) =
-        crypto::aes256gcm_encrypt(message.as_bytes(), &key).map_err(|e| JsError::from(e))?;
+        crypto::aes256gcm_encrypt(message.as_bytes(), &key).map_err(JsError::from)?;
     log!("Encrypting...done");
 
     let new_chunk = Chunk::new(chunk_type, &chunk_content);
-    png.append_chunk(new_chunk, true)
-        .map_err(|e| JsError::from(e))?;
+    png.append_chunk(new_chunk, true).map_err(JsError::from)?;
     log!("Appending chunk...done");
 
     // base64-encode the raw nonce
@@ -79,25 +78,22 @@ pub fn decode(
     chunk_type: &str,
 ) -> Result<String> {
     log!("Decoding...");
-    let png = Png::try_from(input_data).map_err(|e| JsError::from(e))?;
+    let png = Png::try_from(input_data).map_err(JsError::from)?;
     log!("Tried_from raw bytes to png...done");
 
-    let key = crypto::sha3_hash(passphrase).map_err(|e| JsError::from(e))?;
+    let key = crypto::sha3_hash(passphrase).map_err(JsError::from)?;
     let nonce = STANDARD
         .decode(nonce)
         .map_err(|_| JsError::new("Invalid nonce"))?;
     log!("Base64-decoding Nonce...done");
-    if let Some(mess_chunk) = png
-        .chunk_by_type(chunk_type)
-        .map_err(|e| JsError::from(e))?
-    {
+    if let Some(mess_chunk) = png.chunk_by_type(chunk_type).map_err(JsError::from)? {
         let ciphertext = mess_chunk
             .data()
             .strip_prefix(&TAG)
             .ok_or(JsError::new("Tag missing"))?;
         log!("Found a hidden message");
         let plaintext_bytes =
-            crypto::aes256gcm_decrypt(ciphertext, &key, &nonce).map_err(|e| JsError::from(e))?;
+            crypto::aes256gcm_decrypt(ciphertext, &key, &nonce).map_err(JsError::from)?;
         log!("Decrypting...done");
         Ok(String::from_utf8_lossy(&plaintext_bytes).to_string())
     } else {

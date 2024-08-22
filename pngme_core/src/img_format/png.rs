@@ -1,8 +1,8 @@
 use std::str::FromStr;
 use std::{fmt::Display, path::Path};
 
-use crate::png::Chunk;
-use crate::png::DisplayableVec;
+use crate::img_format::Chunk;
+use crate::img_format::DisplayableVec;
 use crate::{Error, Result};
 
 use std::fs::{File, OpenOptions};
@@ -164,8 +164,8 @@ impl Display for Png {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::png::Chunk;
-    use crate::png::ChunkType;
+    use crate::img_format::Chunk;
+    use crate::img_format::ChunkType;
     use std::convert::TryFrom;
     use std::str::FromStr;
 

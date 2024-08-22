@@ -2,8 +2,8 @@ use crate::{Error, Result};
 use std::fmt::Display;
 use std::io::{BufReader, Read};
 
-use crate::png::ChunkType;
-use crate::png::DisplayableVec;
+use crate::img_format::ChunkType;
+use crate::img_format::DisplayableVec;
 use crc::{Crc, CRC_32_ISO_HDLC};
 
 #[derive(Clone)]
@@ -149,7 +149,7 @@ impl Display for Chunk {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::png::ChunkType;
+    use crate::img_format::ChunkType;
     use std::str::FromStr;
 
     fn testing_chunk() -> Chunk {
