@@ -14,6 +14,7 @@ type Result<T> = std::result::Result<T, JsError>;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
+#[allow(unexpected_cfgs)]
 #[cfg(feature = "wee_alloc")]
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
@@ -61,7 +62,7 @@ pub fn encode(
     log!("Appending chunk...done");
 
     // base64-encode the raw nonce
-    let nonce = STANDARD.encode(&nonce_raw);
+    let nonce = STANDARD.encode(nonce_raw);
     let encoded_bytes = png.as_bytes().into_boxed_slice();
 
     Ok(PublicMaterial {

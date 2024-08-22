@@ -26,7 +26,7 @@ impl Png {
     pub fn from_chunks(chunks: Vec<Chunk>) -> Png {
         Self {
             header: STANDARD_HEADER,
-            chunks: chunks,
+            chunks,
         }
     }
 
@@ -37,10 +37,10 @@ impl Png {
             .truncate(true)
             .create(true)
             .open(path)
-            .map_err(|e| Error::FileOpenErr(e))?;
+            .map_err(Error::FileOpenErr)?;
         png_file
             .write_all(&self.as_bytes())
-            .map_err(|e| Error::BufferWriterErr(e))?;
+            .map_err(Error::BufferWriterErr)?;
         Ok(())
     }
 
@@ -92,7 +92,7 @@ impl Png {
         Ok(self
             .chunks
             .iter()
-            .find(|c| c.chunk_type().clone() == target_chunk_type))
+            .find(|c| *c.chunk_type() == target_chunk_type))
     }
 
     /// Returns this `Png` as a byte sequence.
@@ -141,13 +141,13 @@ impl TryFrom<&Path> for Png {
 
     /// Creates a 'Png' from a file using the correct header
     fn try_from(value: &Path) -> std::result::Result<Self, Self::Error> {
-        let mut png_file = File::open(value).map_err(|e| Error::FileOpenErr(e))?;
+        let mut png_file = File::open(value).map_err(Error::FileOpenErr)?;
 
         // Read the file into vector
         let mut buffer = Vec::new();
         png_file
             .read_to_end(&mut buffer)
-            .map_err(|e| Error::BufferReaderErr(e))?;
+            .map_err(Error::BufferReaderErr)?;
 
         // Return this struct if input data is valid
         Png::try_from(buffer.as_slice())
@@ -170,13 +170,11 @@ mod tests {
     use std::str::FromStr;
 
     fn testing_chunks() -> Vec<Chunk> {
-        let mut chunks = Vec::new();
-
-        chunks.push(chunk_from_strings("FrSt", "I am the first chunk").unwrap());
-        chunks.push(chunk_from_strings("miDl", "I am another chunk").unwrap());
-        chunks.push(chunk_from_strings("LASt", "I am the last chunk").unwrap());
-
-        chunks
+        vec![
+            chunk_from_strings("FrSt", "I am the first chunk").unwrap(),
+            chunk_from_strings("miDl", "I am another chunk").unwrap(),
+            chunk_from_strings("LASt", "I am the last chunk").unwrap(),
+        ]
     }
 
     fn testing_png() -> Png {

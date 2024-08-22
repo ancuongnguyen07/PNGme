@@ -110,7 +110,7 @@ impl TryFrom<&[u8]> for Chunk {
         let mut length_bytes: [u8; 4] = [0; 4];
         reader
             .read_exact(&mut length_bytes)
-            .map_err(|e| Error::BufferReaderErr(e))?;
+            .map_err(Error::BufferReaderErr)?;
         let length = u32::from_be_bytes(length_bytes);
 
         let chunk_type_slice = value.get(4..8).expect("invalid length byte");
@@ -121,7 +121,7 @@ impl TryFrom<&[u8]> for Chunk {
         let chunk_data = DisplayableVec::new(chunk_data_slice);
 
         let crc = value
-            .get(data_crc_border..(data_crc_border + 4) as usize)
+            .get(data_crc_border..(data_crc_border + 4))
             .expect("invalid length byte");
         let mut crc_byte: [u8; 4] = [0; 4];
         crc_byte.copy_from_slice(crc);
@@ -252,7 +252,7 @@ mod tests {
         let mut chunk = testing_chunk();
         let tag = "MyTag".as_bytes();
         let new_chunk_data = "MyTagThis is where your secret message will be!".as_bytes();
-        let new_crc = compute_crc(&chunk.chunk_type().as_bytes(), &new_chunk_data);
+        let new_crc = compute_crc(&chunk.chunk_type().as_bytes(), new_chunk_data);
         assert_ne!(new_crc, chunk.crc());
 
         chunk.prepend(tag)?;

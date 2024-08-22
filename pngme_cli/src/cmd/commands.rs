@@ -47,7 +47,7 @@ fn encrypt_helper(
     };
 
     let (ciphertext, nonce_raw) =
-        aes256gcm_encrypt(mess_bytes, &enc_key).map_err(|e| Error::CoreLibErr(e))?;
+        aes256gcm_encrypt(mess_bytes, &enc_key).map_err(Error::CoreLibErr)?;
     // base64-encode Nonce
     let nonce = STANDARD.encode(nonce_raw);
     Ok((ciphertext, nonce))
@@ -68,12 +68,11 @@ fn input_png_helper(
         if let Some(url) = url_arg {
             let mut easy_curl = Easy::new();
             easy_curl
-                .url(&url)
+                .url(url)
                 .map_err(|_| Error::CurlErr(url.clone()))?;
 
             let file_name = url.split('/').last().ok_or(Error::CurlErr(url.clone()))?;
-            let mut download_png =
-                File::create(file_name).map_err(|err| Error::FileWriteErr(err))?;
+            let mut download_png = File::create(file_name).map_err(Error::FileWriteErr)?;
             easy_curl
                 .write_function(move |data| {
                     download_png.write_all(data).unwrap();
@@ -99,23 +98,22 @@ fn input_png_helper(
 /// Encodes a message into a PNG file and saves the result
 pub fn encode(args: EncodeArgs) -> Result<()> {
     let file_path = input_png_helper(&args.in_file_path, &args.url, args.verbosity)?;
-    let mut png = Png::try_from(Path::new(&file_path)).map_err(|e| Error::CoreLibErr(e))?;
+    let mut png = Png::try_from(Path::new(&file_path)).map_err(Error::CoreLibErr)?;
     if args.verbosity {
         println!("Reading {}... done", file_path.to_string_lossy());
     }
 
-    let chunk_type = ChunkType::from_str(&args.chunk_type).map_err(|e| Error::CoreLibErr(e))?;
+    let chunk_type = ChunkType::from_str(&args.chunk_type).map_err(Error::CoreLibErr)?;
     let (chunk_content, nonce) = encrypt_helper(&args.key, &args.passphrase, args.mess.as_bytes())?;
     let chunk = Chunk::new(chunk_type, &chunk_content);
     if args.verbosity {
         println!("Encrypting your message... done");
     }
 
-    png.append_chunk(chunk, true)
-        .map_err(|e| Error::CoreLibErr(e))?;
+    png.append_chunk(chunk, true).map_err(Error::CoreLibErr)?;
 
     png.to_file(Path::new(&args.out_file_path))
-        .map_err(|e| Error::CoreLibErr(e))?;
+        .map_err(Error::CoreLibErr)?;
     if args.verbosity {
         println!(
             "Embeding your secret message to {}... done",
@@ -143,30 +141,28 @@ fn decrypt_helper(
         STANDARD
             .decode(base64_dec_key)
             .map_err(|_| Error::InvalidKey)?
+    } else if let Some(passphrase) = passphrase_arg {
+        sha3_hash(passphrase).map_err(Error::CoreLibErr)?
     } else {
-        if let Some(passphrase) = passphrase_arg {
-            sha3_hash(passphrase).map_err(|e| Error::CoreLibErr(e))?
-        } else {
-            get_passphrase_key()?
-        }
+        get_passphrase_key()?
     };
 
     let nonce = STANDARD
         .decode(nonce)
         .map_err(|_| Error::InvalidNonce(nonce.to_string()))?;
-    aes256gcm_decrypt(ciphertext, &dec_key, &nonce).map_err(|e| Error::CoreLibErr(e))
+    aes256gcm_decrypt(ciphertext, &dec_key, &nonce).map_err(Error::CoreLibErr)
 }
 
 /// Searches for a message hidden in a PNG file and prints the message if one is found
 pub fn decode(args: DecodeArgs) -> Result<()> {
-    let png = Png::try_from(Path::new(&args.in_file_path)).map_err(|e| Error::CoreLibErr(e))?;
+    let png = Png::try_from(Path::new(&args.in_file_path)).map_err(Error::CoreLibErr)?;
     if args.verbosity {
         println!("Reading {}... done", args.in_file_path.to_string_lossy());
     }
 
     if let Some(mess_chunk) = png
         .chunk_by_type(&args.chunk_type)
-        .map_err(|e| Error::CoreLibErr(e))?
+        .map_err(Error::CoreLibErr)?
     {
         let ciphertext = mess_chunk
             .data()
@@ -197,10 +193,10 @@ fn search_helper(png: &Png) -> Vec<&Chunk> {
 }
 
 pub fn search(args: SearchArgs) -> Result<()> {
-    let png = Png::try_from(Path::new(&args.in_file_path)).map_err(|e| Error::CoreLibErr(e))?;
+    let png = Png::try_from(Path::new(&args.in_file_path)).map_err(Error::CoreLibErr)?;
     let candidates = search_helper(&png);
     for (ind, chunk) in candidates.iter().enumerate() {
-        let mess_str = String::from_utf8_lossy(&chunk.data());
+        let mess_str = String::from_utf8_lossy(chunk.data());
         println!("Message {}: {}", ind + 1, mess_str);
     }
 
@@ -218,16 +214,16 @@ pub fn search(args: SearchArgs) -> Result<()> {
 fn get_passphrase_key() -> Result<Vec<u8>> {
     let passphrase = rpassword::prompt_password("Enter your passphrase: ")
         .map_err(|_| Error::PassphraseReadErr)?;
-    sha3_hash(&passphrase).map_err(|e| Error::CoreLibErr(e))
+    sha3_hash(&passphrase).map_err(Error::CoreLibErr)
 }
 
 /// Removes a chunk from a PNG file and saves the result
 pub fn remove(args: RemoveArgs) -> Result<()> {
-    let mut png = Png::try_from(Path::new(&args.in_file_path)).map_err(|e| Error::CoreLibErr(e))?;
+    let mut png = Png::try_from(Path::new(&args.in_file_path)).map_err(Error::CoreLibErr)?;
     match png.remove_chunk(&args.chunk_type) {
         Ok(_) => {
             png.to_file(Path::new(&args.in_file_path))
-                .map_err(|e| Error::CoreLibErr(e))?;
+                .map_err(Error::CoreLibErr)?;
             Ok(())
         }
         Err(err) => Err(Error::CoreLibErr(err)),
@@ -236,7 +232,7 @@ pub fn remove(args: RemoveArgs) -> Result<()> {
 
 /// Prints all of the chunks in a PNG file
 pub fn print_chunks(args: PrintArgs) -> Result<()> {
-    let png = Png::try_from(Path::new(&args.in_file_path)).map_err(|e| Error::CoreLibErr(e))?;
+    let png = Png::try_from(Path::new(&args.in_file_path)).map_err(Error::CoreLibErr)?;
     for chunk in png.chunks() {
         println!("{chunk}");
     }
@@ -255,8 +251,8 @@ mod tests {
         key_arg: &Option<String>,
         passphrase_arg: &Option<String>,
     ) -> Result<()> {
-        let (ciphertext, nonce) = encrypt_helper(&key_arg, &passphrase_arg, message.as_bytes())?;
-        let plaintext = decrypt_helper(ciphertext.as_slice(), &passphrase_arg, &key_arg, &nonce)?;
+        let (ciphertext, nonce) = encrypt_helper(key_arg, passphrase_arg, message.as_bytes())?;
+        let plaintext = decrypt_helper(ciphertext.as_slice(), passphrase_arg, key_arg, &nonce)?;
         let plaintext = String::from_utf8_lossy(&plaintext);
         assert_eq!(plaintext, message);
         Ok(())
