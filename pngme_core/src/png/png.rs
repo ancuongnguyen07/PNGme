@@ -30,21 +30,7 @@ impl Png {
         }
     }
 
-    /// Creates a 'Png' from a file using the correct header
-    pub fn try_from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let mut png_file = File::open(path).map_err(|e| Error::FileOpenErr(e))?;
-
-        // Read the file into vector
-        let mut buffer = Vec::new();
-        png_file
-            .read_to_end(&mut buffer)
-            .map_err(|e| Error::BufferReaderErr(e))?;
-
-        // Return this struct if input data is valid
-        Png::try_from(buffer.as_slice())
-    }
-
-    /// Export this PNG struct to a PNG file with given file path
+    /// Export this PNG struct to a PNG file with the given file path
     pub fn to_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let mut png_file = OpenOptions::new()
             .write(true)
@@ -112,10 +98,11 @@ impl Png {
     /// Returns this `Png` as a byte sequence.
     /// These bytes will contain the header followed by the bytes of all of the chunks.
     pub fn as_bytes(&self) -> Vec<u8> {
-        let chunk_bytes: Vec<u8> = self.chunks.iter().flat_map(|ch| ch.as_bytes()).collect();
+        // Collection of all chunks as bytes
+        let chunks_bytes: Vec<u8> = self.chunks.iter().flat_map(|ch| ch.as_bytes()).collect();
         self.header
             .iter()
-            .chain(chunk_bytes.iter())
+            .chain(chunks_bytes.iter())
             .copied()
             .collect()
     }
@@ -124,6 +111,7 @@ impl Png {
 impl TryFrom<&[u8]> for Png {
     type Error = Error;
 
+    /// Try to manipulate raw bytes into a PNG object.
     fn try_from(value: &[u8]) -> std::result::Result<Self, Self::Error> {
         let first_8_bytes = value.get(..8).expect("Byte stream less than 8 bytes");
         if first_8_bytes != STANDARD_HEADER {
@@ -145,6 +133,24 @@ impl TryFrom<&[u8]> for Png {
         }
 
         Ok(Self { header, chunks })
+    }
+}
+
+impl TryFrom<&Path> for Png {
+    type Error = Error;
+
+    /// Creates a 'Png' from a file using the correct header
+    fn try_from(value: &Path) -> std::result::Result<Self, Self::Error> {
+        let mut png_file = File::open(value).map_err(|e| Error::FileOpenErr(e))?;
+
+        // Read the file into vector
+        let mut buffer = Vec::new();
+        png_file
+            .read_to_end(&mut buffer)
+            .map_err(|e| Error::BufferReaderErr(e))?;
+
+        // Return this struct if input data is valid
+        Png::try_from(buffer.as_slice())
     }
 }
 
@@ -206,7 +212,7 @@ mod tests {
             .copied()
             .collect();
 
-        let png = Png::try_from(bytes.as_ref());
+        let png = Png::try_from(bytes.as_slice());
 
         assert!(png.is_ok());
     }
@@ -224,7 +230,7 @@ mod tests {
             .copied()
             .collect();
 
-        let png = Png::try_from(bytes.as_ref());
+        let png = Png::try_from(bytes.as_slice());
 
         assert!(png.is_err());
     }
@@ -246,7 +252,7 @@ mod tests {
 
         chunk_bytes.append(&mut bad_chunk);
 
-        let png = Png::try_from(chunk_bytes.as_ref());
+        let png = Png::try_from(chunk_bytes.as_slice());
 
         assert!(png.is_err());
     }
@@ -324,7 +330,7 @@ mod tests {
             .copied()
             .collect();
 
-        let png: Png = TryFrom::try_from(bytes.as_ref()).unwrap();
+        let png: Png = TryFrom::try_from(bytes.as_slice()).unwrap();
 
         let _png_string = format!("{}", png);
     }

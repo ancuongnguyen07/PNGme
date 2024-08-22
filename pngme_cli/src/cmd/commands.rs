@@ -99,7 +99,7 @@ fn input_png_helper(
 /// Encodes a message into a PNG file and saves the result
 pub fn encode(args: EncodeArgs) -> Result<()> {
     let file_path = input_png_helper(&args.in_file_path, &args.url, args.verbosity)?;
-    let mut png = Png::try_from_file(Path::new(&file_path)).map_err(|e| Error::CoreLibErr(e))?;
+    let mut png = Png::try_from(Path::new(&file_path)).map_err(|e| Error::CoreLibErr(e))?;
     if args.verbosity {
         println!("Reading {}... done", file_path.to_string_lossy());
     }
@@ -159,8 +159,7 @@ fn decrypt_helper(
 
 /// Searches for a message hidden in a PNG file and prints the message if one is found
 pub fn decode(args: DecodeArgs) -> Result<()> {
-    let png =
-        Png::try_from_file(Path::new(&args.in_file_path)).map_err(|e| Error::CoreLibErr(e))?;
+    let png = Png::try_from(Path::new(&args.in_file_path)).map_err(|e| Error::CoreLibErr(e))?;
     if args.verbosity {
         println!("Reading {}... done", args.in_file_path.to_string_lossy());
     }
@@ -198,8 +197,7 @@ fn search_helper(png: &Png) -> Vec<&Chunk> {
 }
 
 pub fn search(args: SearchArgs) -> Result<()> {
-    let png =
-        Png::try_from_file(Path::new(&args.in_file_path)).map_err(|e| Error::CoreLibErr(e))?;
+    let png = Png::try_from(Path::new(&args.in_file_path)).map_err(|e| Error::CoreLibErr(e))?;
     let candidates = search_helper(&png);
     for (ind, chunk) in candidates.iter().enumerate() {
         let mess_str = String::from_utf8_lossy(&chunk.data());
@@ -225,8 +223,7 @@ fn get_passphrase_key() -> Result<Vec<u8>> {
 
 /// Removes a chunk from a PNG file and saves the result
 pub fn remove(args: RemoveArgs) -> Result<()> {
-    let mut png =
-        Png::try_from_file(Path::new(&args.in_file_path)).map_err(|e| Error::CoreLibErr(e))?;
+    let mut png = Png::try_from(Path::new(&args.in_file_path)).map_err(|e| Error::CoreLibErr(e))?;
     match png.remove_chunk(&args.chunk_type) {
         Ok(_) => {
             png.to_file(Path::new(&args.in_file_path))
@@ -239,8 +236,7 @@ pub fn remove(args: RemoveArgs) -> Result<()> {
 
 /// Prints all of the chunks in a PNG file
 pub fn print_chunks(args: PrintArgs) -> Result<()> {
-    let png =
-        Png::try_from_file(Path::new(&args.in_file_path)).map_err(|e| Error::CoreLibErr(e))?;
+    let png = Png::try_from(Path::new(&args.in_file_path)).map_err(|e| Error::CoreLibErr(e))?;
     for chunk in png.chunks() {
         println!("{chunk}");
     }

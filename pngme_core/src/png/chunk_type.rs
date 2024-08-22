@@ -10,7 +10,7 @@ pub struct ChunkType {
 
 impl ChunkType {
     /// Returns the raw bytes contained in this chunk
-    pub fn bytes(&self) -> [u8; 4] {
+    pub fn as_bytes(&self) -> [u8; 4] {
         self.bytes
     }
 
@@ -110,7 +110,7 @@ mod tests {
         let expected = [82, 117, 83, 116];
         let actual = ChunkType::try_from([82, 117, 83, 116]).unwrap();
 
-        assert_eq!(expected, actual.bytes());
+        assert_eq!(expected, actual.as_bytes());
     }
 
     #[test]
