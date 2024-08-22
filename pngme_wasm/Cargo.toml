@@ -9,6 +9,7 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 default = ["console_error_panic_hook"]
+wee_alloc = []
 
 [dependencies]
 pngme_core = { path = "../pngme_core" }
