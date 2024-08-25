@@ -100,8 +100,3 @@ pub fn decode(
         Err(JsError::new("Hidden message not found"))
     }
 }
-
-#[wasm_bindgen]
-extern "C" {
-    fn alert(s: &str);
-}

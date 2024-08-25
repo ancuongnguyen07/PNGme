@@ -48,7 +48,7 @@ decryptRadio.addEventListener('change', toggleField);
 /**
  * Read the uploaded file and return file byte array.
  * 
- * @returns {Promise<Uint8Array>}
+ * @returns {Promise<Uint8Array|null>}
  */
 const readUploadFile = () => {
     return new Promise((resolve, reject) => {
@@ -114,43 +114,90 @@ const displayImage = (data, filename) => {
     downloadLinkElement.download = name;
 }
 
+/**
+ * Get an image from the given URL
+ * 
+ * @param {string} url
+ * @returns {Promise<Uint8Array|null>}
+ */
+const curlImage = async (url) => {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch the image: ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        const rawBytes = await blob.arrayBuffer();
+        return new Uint8Array(rawBytes);
+    } catch (error) {
+        alert(`Failed to download image from URLL: ${url}\n...${error.message}`)
+        return null;
+    }
+}
+
+/**
+ * Return the code representing which image source (URL or uploading) should be used
+ * @returns {number}
+ * - 0: both are empty (00 in binary)
+ * - 1: only URL is provided (01 in binary)
+ * - 2: only uploading is provided (10 in binary)
+ * - 3: both are provided (11 in binary)
+ */
+const urlOrUpload = () => {
+    const urlBit = pngURLInput.value ? 1 : 0;
+    const uploadingBit = uploadInput.files[0] ? 1 : 0;
+
+    return (urlBit << 1) | uploadingBit;
+}
+
 // Handle submitting form
 const pngmeForm = document.getElementById('pngmeForm');
 pngmeForm.addEventListener('submit', async (event) => {
-    event.preventDefault(); // Prevent default form submission
+    try {
+        event.preventDefault(); // Prevent default form submission
 
-    const fileBytes = await readUploadFile();
-    if (fileBytes === null) {
-        alert("Please upload a PNG image!!!");
-        return;
-    }
+        let fileBytes = null;
+        const imageSourceCode = urlOrUpload();
 
-    const passphrase = passphraseInput.value;
-    if (util.isEmpty(passphrase)) {
-        alert("Please enter the passphrase!");
-        return;
-    }
-    const chunkType = chunkTypeField.value;
-    if (util.isEmpty(chunkType)) {
-        alert("Please enter the chunk type");
-        return;
-    }
-    if (chunkType.length !== 4) {
-        alert("Your chunk type is not exactly 4-bytes long");
-        return;
-    }
-
-    const opertaionMode = document.querySelector('input[name="opMode"]:checked').value;
-    const filename = uploadInput.files[0].name;
-    if (opertaionMode === 'encode') {
-        const message = messageField.value;
-        if (util.isEmpty(message)) {
-            alert("Please enter your message");
-            return;
+        switch (imageSourceCode) {
+            case 0:
+                throw new Error("Please upload your PNG image OR paste the URL linking to it");
+            case 1:
+                // URL is used
+                fileBytes = await curlImage(imageSource);
+                break;
+            case 2:
+                // File is uploaded
+                fileBytes = await readUploadFile();
+                break;
+            case 3:
+                throw new Err("Please explicitly upload your file OR link the URL, don't use both");
+            default:
+                throw new Err("Invalid image source option");
         }
 
-        // Start encode
-        try {
+        const passphrase = passphraseInput.value;
+        if (util.isEmpty(passphrase)) {
+            throw new Err("Please enter the passphrase!");
+        }
+        const chunkType = chunkTypeField.value;
+        if (util.isEmpty(chunkType)) {
+            throw new Err("Please enter the chunk type");
+        }
+        if (chunkType.length !== 4) {
+            throw new Err("Your chunk type is not exactly 4-bytes long");
+        }
+
+        const opertaionMode = document.querySelector('input[name="opMode"]:checked').value;
+        const filename = uploadInput.files[0].name;
+        if (opertaionMode === 'encode') {
+            const message = messageField.value;
+            if (util.isEmpty(message)) {
+                throw new Err("Please enter your message");
+            }
+
+            // Start encode
             const publicMaterial = pngme.encode(fileBytes, passphrase, message, chunkType);
             const nonce = publicMaterial.nonce;
             const encodedBytes = publicMaterial.encoded_bytes;
@@ -161,24 +208,18 @@ pngmeForm.addEventListener('submit', async (event) => {
             displayImage(encodedBytes, filename);
             nonceValueElement.textContent = nonce;
             encodeResultBoxElement.hidden = false;
-        } catch (error) {
-            alert(`Error Encoding: ${error.message}`);
-            return;
-        }
-    } else if (opertaionMode === 'decode') {
-        const nonce = nonceInput.value;
-        if (util.isEmpty(nonce)) {
-            alert("Please enter your message");
-            return;
-        }
-        // Start decode
-        try {
+
+        } else if (opertaionMode === 'decode') {
+            const nonce = nonceInput.value;
+            if (util.isEmpty(nonce)) {
+                throw new Err("Please enter your message");
+            }
+            // Start decode
             console.log("hihihi")
 
             const plaintext = pngme.decode(fileBytes, passphrase, nonce, chunkType);
             if (!plaintext) {
-                alert("Something wrong in decoding");
-                return;
+                throw new Err("Something wrong in decoding");
             }
 
             resetEncodeBoxContent();
@@ -186,8 +227,10 @@ pngmeForm.addEventListener('submit', async (event) => {
             // Display results
             decodeResultBoxElement.hidden = false;
             secretMessageBoxElement.textContent = plaintext;
-        } catch (error) {
-            alert(`Error Decoding: ${error.message}`);
         }
+
+    } catch (error) {
+        alert(`Error: ${error.message}`);
+        return;
     }
 });
