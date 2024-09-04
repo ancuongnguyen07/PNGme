@@ -76,11 +76,16 @@ const resetEncodeBoxContent = () => {
     nonceValueElement.textContent = "";
     outputImageElement.src = "#";
     downloadLinkElement.download = "";
+
+    chunkTypeField.textContent = "";
+    passphraseInput.textContent = "";
 }
 
 const resetDecodeBoxContent = () => {
     decodeResultBoxElement.hidden = true;
     secretMessageBoxElement.textContent = "";
+    chunkTypeField.textContent = "";
+    passphraseInput.textContent = "";
 }
 
 /**
@@ -148,7 +153,7 @@ const urlOrUpload = () => {
     const urlBit = pngURLInput.value ? 1 : 0;
     const uploadingBit = uploadInput.files[0] ? 1 : 0;
 
-    return (urlBit << 1) | uploadingBit;
+    return (uploadingBit << 1) | urlBit;
 }
 
 // Handle submitting form
@@ -158,6 +163,7 @@ pngmeForm.addEventListener('submit', async (event) => {
         event.preventDefault(); // Prevent default form submission
 
         let fileBytes = null;
+        let filename = null;
         const imageSourceCode = urlOrUpload();
 
         switch (imageSourceCode) {
@@ -165,11 +171,15 @@ pngmeForm.addEventListener('submit', async (event) => {
                 throw new Error("Please upload your PNG image OR paste the URL linking to it");
             case 1:
                 // URL is used
-                fileBytes = await curlImage(imageSource);
-                break;
+                // Currently is not supported
+                // const url = pngURLInput.value;
+                // fileBytes = await curlImage(url);
+                // filename = util.getFilename(url);
+                throw new Err("This option is currently not supported!!!");
             case 2:
                 // File is uploaded
                 fileBytes = await readUploadFile();
+                filename = uploadInput.files[0].name;
                 break;
             case 3:
                 throw new Err("Please explicitly upload your file OR link the URL, don't use both");
@@ -190,7 +200,7 @@ pngmeForm.addEventListener('submit', async (event) => {
         }
 
         const opertaionMode = document.querySelector('input[name="opMode"]:checked').value;
-        const filename = uploadInput.files[0].name;
+
         if (opertaionMode === 'encode') {
             const message = messageField.value;
             if (util.isEmpty(message)) {

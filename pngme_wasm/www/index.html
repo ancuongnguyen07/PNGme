@@ -5,6 +5,7 @@
     <meta charset="utf-8">
     <title>PNGme WASM!</title>
     <script src="./bootstrap.js"></script>
+    <link rel="stylesheet" href="styles.css">
 
 </head>
 
@@ -27,8 +28,8 @@
                 </div>
             </fieldset>
             <p>
-                <input type="url" id="url" placeholder="Enter the PNG image URL..." class="shouldReset" />
-                <b>OR</b>
+                <input type="url" id="url" placeholder="Enter the PNG image URL..." class="shouldReset" hidden />
+                <b hidden>OR</b>
                 <label for="uploadInput">Upload PNG image from your computer</label>
                 <input type="file" id="uploadInput" accept=".png, image/png" class="shouldReset" />
             </p>
