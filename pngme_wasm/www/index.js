@@ -77,15 +77,14 @@ const resetEncodeBoxContent = () => {
     outputImageElement.src = "#";
     downloadLinkElement.download = "";
 
-    chunkTypeField.textContent = "";
-    passphraseInput.textContent = "";
+    refresInputContents();
 }
 
 const resetDecodeBoxContent = () => {
     decodeResultBoxElement.hidden = true;
     secretMessageBoxElement.textContent = "";
-    chunkTypeField.textContent = "";
-    passphraseInput.textContent = "";
+
+    refresInputContents();
 }
 
 /**
